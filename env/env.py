@@ -1,4 +1,4 @@
-import chess
+import env.chess as chess
 import chess.svg
 
 from io import BytesIO

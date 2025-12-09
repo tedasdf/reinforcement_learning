@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class MonteCarloEvaluation():
+class MonteCarlo():
     def __init__(
             self,
             states,
@@ -21,23 +21,30 @@ class MonteCarloEvaluation():
         # init states value 
         if init_state_type == 'even':
             state_val = 0.5
-            self.state_val = {state: state_val for state in states} 
+            self.val_states = {state: state_val for state in states} 
+        else:
+            # random init 
+            state_vals = np.random.rand(len(states))
+            state_vals /= state_vals.sum()
+
+            self.val_states = {state: float(val) for state , val in zip(states,state_vals)}
         
-        # init action probabilities 
-        if init_action_type == 'even':
-            action_prob = 1/len(actions) 
-            self.action_prob = {act: action_prob for act in actions}
+
+        # # init action probabilities 
+        # if init_action_type == 'even':
+        action_prob = 1/len(actions) 
+        self.action_prob = {act: action_prob for act in actions}
 
     
-    def random_policy(self):
-        return np.random.choice(self.actions, p=self.action_prob)
+    def random_policy(self, actions):
+        return np.random.choice(actions, p=self.action_prob)
 
 
     def update(self, episodes):
         G_t = 0 
         for state_id , reward in reversed(episodes):
-            
-            G_t = reward + self.discount_rate * G_t 
+            G_t = reward + self.discount_rate * G_t
 
             if state_id in self.val_states.keys():
                 self.val_states[state_id] += self.alpha * (G_t - self.val_states[state_id])
+        
