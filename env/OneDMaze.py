@@ -1,32 +1,37 @@
 
 
-class OneDimensionEnv():
+class OneDimensionEnv:
     def __init__(self):
-        self.state_types = ['no' ,-2 , -1, 0, 1, 2, 'set']
+        self.state_types = ['no', -2, -1, 0, 1, 2, 'set']
         self.actions = {
             'down': -1,
             'up': 1
         }
         self.states_idx = 3
-        
-        # for MC to evaluate
-        self.episodes = []
 
+    @property
+    def action_space(self):
+        return list(self.actions.keys())
+  
     def reset(self):
-        self.episodes = []
         self.states_idx = 3
-        return False, list(self.actions.keys()), self.state_types
-    
-    def step(self, act):
+        return self.state_types[self.states_idx]
+
+    def step(self, action):
         current_state_value = self.state_types[self.states_idx]
-        self.states_idx += act
+        self.states_idx += self.actions[action]  # map action string to change
+
+        # Clip index
+        self.states_idx = max(0, min(self.states_idx, len(self.state_types) - 1))
+
         reward = 0
-        terminal = False
-        if self.states_idx == len(self.state_types)-1 or self.states_idx == 0:
-            terminal = True
-            if self.states_idx == len(self.state_types)-1:
+        done = False
+        if self.states_idx == 0 or self.states_idx == len(self.state_types) - 1:
+            done = True
+            if self.states_idx == len(self.state_types) - 1:
                 reward = 1
+
         next_state = self.state_types[self.states_idx]
 
-        self.episodes.append((current_state_value, act, reward))
-        return next_state, reward , terminal , list(self.actions.keys())
+        return next_state, reward, done, {}
+        

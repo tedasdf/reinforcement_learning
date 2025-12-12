@@ -16,6 +16,7 @@ class n_step_TD():
         self.alpha = alpha
 
         self.n = n
+        
         self.init_action_state(init_state_type, init_action_type, states, actions)
         
     def random_policy(self, actions):
