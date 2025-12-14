@@ -33,11 +33,11 @@ class MonteCarlo():
         # # init action probabilities 
         # if init_action_type == 'even':
         action_prob = 1/len(actions) 
-        self.action_prob = {act: action_prob for act in actions}
-
+        self.actions = actions
+        self.action_probs = [action_prob] * len(actions)
     
-    def random_policy(self, actions):
-        return np.random.choice(actions, p=self.action_prob)
+    def random_policy(self):
+        return np.random.choice(self.actions, p=self.action_probs)
 
 
     def update(self, episodes):
