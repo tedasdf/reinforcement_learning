@@ -1,0 +1,28 @@
+{
+  "os":  "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+  "python":  "CPython 3.11.14",
+  "startedAt":  "2025-12-17T02:32:29.395Z",
+  "program":  "/workspace/algorithms/neural_net/dqn.py",
+  "codePath":  "algorithms/neural_net/dqn.py",
+  "codePathLocal":  "dqn.py",
+  "git":  {
+    "remote":  "https://github.com/tedasdf/reinforcement_learning.git",
+    "commit":  "e2c8e7a19bc7e98403d5b56ad944dd192f0b731e"
+  },
+  "email":  "teedsingyau@gmail.com",
+  "root":  "/workspace/algorithms/neural_net",
+  "host":  "594a7a66a957",
+  "executable":  "/workspace/.rl_env_docker/bin/python",
+  "cpu_count":  10,
+  "cpu_count_logical":  10,
+  "disk":  {
+    "/":  {
+      "total":  "1081101176832",
+      "used":  "12176654336"
+    }
+  },
+  "memory":  {
+    "total":  "8103714816"
+  },
+  "writerId":  "tt7x8y4i5ltuhh1097lgvl575bco96aq"
+}

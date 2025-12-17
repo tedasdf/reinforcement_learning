@@ -1,71 +1,30 @@
-# from algorithms.montecarlo.monte_carlo import MonteCarlo
-# from env.OneDMaze import OneDimensionEnv
-
-
-# def generate_episode(env, mc, max_steps=100):
-#     episode = []
-#     state = env.reset()
-#     done = False
-#     steps = 0
-
-#     while not done and steps < max_steps:
-#         action = mc.random_policy()
-#         next_state, reward, done, _ = env.step(action)
-
-#         episode.append((state, reward))
-#         state = next_state
-#         steps += 1
-
-#     return episode
-
-
-# def train_mc(env, mc, num_episodes=5000):
-#     for ep in range(num_episodes):
-#         episode = generate_episode(env, mc)
-#         mc.update(episode)
-
-#         if (ep + 1) % 500 == 0:
-#             print(f"Episode {ep+1}")
-
-
-# if __name__ == "__main__":
-#     env = OneDimensionEnv()
-
-
-#     action_types = env.action_space
-
-#     print(action_types)
-
-#     mc = MonteCarlo(
-#         states=env.state_types,
-#         actions=action_types,
-#         discount_rate=1.0,
-#         alpha=0.05
-#     )
-    
-#     train_mc(env, mc, num_episodes=5000)
-
-#     print("\nEstimated state values:")
-#     for state, value in mc.val_states.items():
-#         print(f"{state}: {value:.3f}")
 import gym
 import pufferlib.emulation
 
-# class SampleGymEnv(gym.Env):
-#     def __init__(self):
-#         self.observation_space = gym.spaces.Box(low=-1, high=1, shape=(1,))
-#         self.action_space = gym.spaces.Discrete(2)
-
-#     def reset(self):
-#         return self.observation_space.sample()
-
-#     def step(self, action):
-#         return self.observation_space.sample(), 0.0, False, {}
 
 if __name__ == '__main__':
     import gymnasium as gym
-    import ale_py
-
+    import ale_py, os, wandb
+    
+    
+    os.environ['WANDB_API_KEY'] = '792864dae52b3846d1b891481c3ebb7abfe35dd9'
+    
+    # Start a new wandb run to track this script.
+    run = wandb.init(
+        # Set the wandb entity where your project will be logged (generally your team name).
+        entity="my-awesome-team-name",
+        # Set the wandb project where this run will be logged.
+        project="my-awesome-project",
+        # Track hyperparameters and run metadata.
+        config={
+            "learning_rate": 0.02,
+            "architecture": "CNN",
+            "dataset": "CIFAR-100",
+            "epochs": 10,
+        },
+    )
+    
+    
     gym.register_envs(ale_py)  # unnecessary but helpful for IDEs
 
     env = gym.make('ALE/Breakout-v5', render_mode="rgb_array") 

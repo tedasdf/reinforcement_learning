@@ -1,0 +1,59 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        code_path: code/algorithms/neural_net/dqn.py
+        e:
+            lcg4e64pf4ipvxrkbbfxuyh36mwwnn0f:
+                codePath: algorithms/neural_net/dqn.py
+                codePathLocal: dqn.py
+                cpu_count: 10
+                cpu_count_logical: 10
+                disk:
+                    /:
+                        total: "1081101176832"
+                        used: "11996991488"
+                email: teedsingyau@gmail.com
+                executable: /workspace/.rl_env_docker/bin/python
+                git:
+                    commit: e2c8e7a19bc7e98403d5b56ad944dd192f0b731e
+                    remote: https://github.com/tedasdf/reinforcement_learning.git
+                host: 594a7a66a957
+                memory:
+                    total: "8103714816"
+                os: Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35
+                program: /workspace/algorithms/neural_net/dqn.py
+                python: CPython 3.11.14
+                root: /workspace/algorithms/neural_net
+                startedAt: "2025-12-17T02:21:30.052093Z"
+                writerId: lcg4e64pf4ipvxrkbbfxuyh36mwwnn0f
+        m: []
+        python_version: 3.11.14
+        t:
+            "1":
+                - 1
+            "2":
+                - 1
+            "3":
+                - 16
+            "4": 3.11.14
+            "5": 0.23.1
+            "12": 0.23.1
+            "13": linux-x86_64
+batch_size:
+    value: 64
+buffer_size:
+    value: 10000
+env:
+    value: CartPole-v1
+epsilon_decay_steps:
+    value: 10000
+epsilon_end:
+    value: 0.1
+epsilon_start:
+    value: 1
+gamma:
+    value: 0.99
+learning_rate:
+    value: 0.001
+target_update_frequency:
+    value: 100
