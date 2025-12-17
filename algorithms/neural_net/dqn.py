@@ -90,11 +90,14 @@ def select_action(state, q_network, current_step):
             q_values = q_network(state_tensor)
             # Select action with the highest Q-value
             action = q_values.argmax().item()
-    return action
+    return action , epsilon
 
 
 
 if __name__ == "__main__":
+    import wandb
+
+
     # --- Hyperparameters ---
     num_episodes = 1000
     replay_buffer_capacity = 10000
@@ -105,7 +108,7 @@ if __name__ == "__main__":
     # epsilon parameters defined earlier...
 
     # --- Initialization ---
-    env = gym.make('CartPole-v1')
+    env = gym.make('CartPole-v1', render_mode="rgb_array")
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
     replay_buffer = ReplayBuffer(replay_buffer_capacity)
@@ -119,18 +122,39 @@ if __name__ == "__main__":
     total_steps = 0
     episode_rewards = []
 
+    run = wandb.init(
+        project="brick-by-brick",
+        # entity="teedsingyau",
+        config={
+            "env": "CartPole-v1",
+            "learning_rate": learning_rate,
+            "gamma": gamma,
+            "batch_size": batch_size,
+            "buffer_size": replay_buffer_capacity,
+            "target_update_frequency": target_update_frequency,
+            "epsilon_start": epsilon_start,
+            "epsilon_end": epsilon_end,
+            "epsilon_decay_steps": epsilon_decay_steps,
+        },
+    )
+
+
     # --- Training ---
     for episode in range(num_episodes):
         state, _ = env.reset()
         episode_reward = 0
         done = False
 
+        episode_losses = []
+        frames = [] 
         while not done:
             # 1. Select Action
-            action = select_action(state, q_network, total_steps)
+            action, epsilon = select_action(state, q_network, total_steps)
 
             # 2. Interact with Environment
             next_state, reward, terminated, truncated, _ = env.step(action)
+            frame = env.render()  # Returns an RGB array
+            frames.append(frame)
             done = terminated or truncated
             episode_reward += reward
 
@@ -173,6 +197,7 @@ if __name__ == "__main__":
 
                 # --- Calculate Loss ---
                 loss = loss_fn(predicted_q_values, target_q_values)
+                episode_losses.append(loss.item())
 
                 # --- Perform Gradient Descent ---
                 optimizer.zero_grad()
@@ -190,5 +215,15 @@ if __name__ == "__main__":
 
         episode_rewards.append(episode_reward)
         print(f"Episode {episode + 1}: Total Reward = {episode_reward}, Epsilon = {epsilon:.3f}") # Provide feedback
+        mean_loss = np.mean(episode_losses) if episode_losses else 0.0
+
+        wandb.log({
+            "episode": episode,
+            "episode_reward": episode_reward,
+            "mean_loss": mean_loss,
+            "epsilon": epsilon,
+            "total_steps": total_steps,
+            "frame": wandb.Image(frames[-1])
+        })
 
     env.close()
