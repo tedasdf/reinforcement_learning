@@ -1,0 +1,50 @@
+# ===============================
+# Environment
+# ===============================
+env:
+  name: CartPole-v1
+  render_mode: rgb_array
+
+# ===============================
+# Training
+# ===============================
+training:
+  num_episodes: 1000
+  batch_size: 64
+  gamma: 0.99
+  learning_rate: 0.001
+  target_update_frequency: 100
+
+# ===============================
+# Replay Buffer
+# ===============================
+replay_buffer:
+  capacity: 10000
+
+# ===============================
+# Network
+# ===============================
+network:
+  hidden_dim: 128
+
+# ===============================
+# Epsilon-Greedy
+# ===============================
+epsilon:
+  start: 1.0
+  end: 0.1
+  decay_steps: 10000
+
+# ===============================
+# Optimizer
+# ===============================
+optimizer:
+  name: adam
+
+# ===============================
+# Logging (Weights & Biases)
+# ===============================
+logging:
+  use_wandb: true
+  project: brick-by-brick
+  log_frames: true
