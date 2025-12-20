@@ -44,12 +44,14 @@ class ReplayBuffer:
 
 class DQNAgent(nn.Module):
     def __init__(self, 
-                 state_dim , 
-                 hidden_dim, 
-                 action_dim,
-                 capacity,
-                 batch_size
-                 ):
+                state_dim , 
+                hidden_dim, 
+                action_dim,
+                replay_buffer,
+                capacity,
+                batch_size,
+                tau
+            ):
         nn.Module.__init__(self)
         self.q_network = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
@@ -65,7 +67,7 @@ class DQNAgent(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim,action_dim)
         )
-        self.replay_buffer = ReplayBuffer(capacity , batch_size)
+        self.replay_buffer = replay_buffer # ReplayBuffer(capacity , batch_size)
 
         ### epsilon 
         self.epsilon_start = 1.0
@@ -77,6 +79,21 @@ class DQNAgent(nn.Module):
 
         self.total_steps = 0
         # self.init_method(epsilon_decay )
+
+        # if soft target updates 
+        self.tau = tau
+
+    @torch.no_grad() # Polyak averaging
+    def soft_update_target(self):
+        for target_param, online_param in zip(
+            self.target_network.parameters(),
+            self.q_network.parameters()
+        ):
+            target_param.data.copy_(
+                self.tau * online_param.data +
+                (1.0 - self.tau) * target_param.data
+            )
+
 
     def init_method(self):
         self.target_network.load_state_dict(self.q_network.state_dict())
@@ -97,8 +114,7 @@ class DQNAgent(nn.Module):
         )
 
         if random.random() < epsilon:
-            # Explore: Choose a random action
-            action = env.action_space.sample()
+            action = random.randrange(self.action_dim)
         else:
             # Exploit: Choose the best action based on Q-network
             with torch.no_grad(): # No gradient calculation needed here
@@ -109,7 +125,16 @@ class DQNAgent(nn.Module):
                 action = q_values.argmax().item()
         return action , epsilon
 
-        
+    def target_calculation(self, next_states_tensor, dones_tensor, rewards_tensor):
+        with torch.no_grad():
+            next_q_values_target = self.target_network(next_states_tensor)
+            max_next_q_values = next_q_values_target.max(1)[0]
+            # Zero out Q-values for terminal states
+            max_next_q_values[dones_tensor] = 0.0
+            # Calculate the target Q-value: R + gamma * max_a' Q_target(S', a')
+        target_q_values = rewards_tensor + self.gamma * max_next_q_values
+        return target_q_values
+
     def learn(self, state, action, reward, next_state, done):
         self.replay_buffer.store(state, action, reward, next_state, done)
         
@@ -129,23 +154,22 @@ class DQNAgent(nn.Module):
         actions_tensor = torch.LongTensor(actions_batch).unsqueeze(1) # Need shape (batch_size, 1) for gather
         rewards_tensor = torch.FloatTensor(rewards_batch)
         next_states_tensor = torch.FloatTensor(next_states_batch)
-        dones_tensor = torch.BoolTensor(dones_batch) # Use BoolTensor for masking
+        dones_tensor = torch.BoolTensor(dones_batch ,dtype=torch.bool) # Use BoolTensor for masking
         
-        with torch.no_grad():
-            next_q_values_target = self.target_network(next_states_tensor)
-            max_next_q_values = next_q_values_target.max(1)[0]
-            # Zero out Q-values for terminal states
-            max_next_q_values[dones_tensor] = 0.0
-            # Calculate the target Q-value: R + gamma * max_a' Q_target(S', a')
-            target_q_values = rewards_tensor + self.gamma * max_next_q_values
+        target_q_values = self.target_calculation(next_states_tensor, dones_tensor, rewards_tensor)
 
         q_values_pred = self.q_network(states_tensor)
         
         predicted_q_values = q_values_pred.gather(1, actions_tensor).squeeze(1)
         
+        if self.tau is None:
+            if self.total_steps % self.target_update_frequency == 0:
+                self.target_network.load_state_dict(self.q_network.state_dict())
 
-        if self.total_steps % self.target_update_frequency == 0:
-            self.target_network.load_state_dict(self.q_network.state_dict())
+        # SOFT update (tau provided)
+        else:
+            self.soft_update_target()
+
         return predicted_q_values, target_q_values
     
 
@@ -163,10 +187,11 @@ if __name__ == "__main__":
 
     num_episodes = cfg.training.num_episodes
     batch_size = cfg.training.batch_size
-    gamma = cfg.training.gamma
+    gamma = cfg.network.gamma
     learning_rate = cfg.training.learning_rate
     target_update_frequency = cfg.training.target_update_frequency
-
+    hidden_dim = cfg.network.hidden_dim
+    capacity = cfg.replay_buffer.capacity
 
     if cfg.logging.use_wandb:
         wandb.init(
@@ -179,10 +204,12 @@ if __name__ == "__main__":
         state_dim=state_dim,
         hidden_dim=hidden_dim,
         action_dim=action_dim,
-        epsilon_decay=epsilon_decay,
         capacity=capacity,
-        batch_size=batch_size
+        batch_size=batch_size,
+        tau=cfg.training.tau,
+        target_update_frequency=cfg.training.target_update_frequency
     )
+
 
     
     optimizer , loss_fn = agent.init_method()
@@ -211,7 +238,10 @@ if __name__ == "__main__":
             done = terminated or truncated
             episode_reward += reward
             
-            predicted_q_value, target_q_values = agent.learn(...)
+            predicted_q_value, target_q_values = agent.learn(
+                state, action, reward, next_state, done
+            )
+
 
             if predicted_q_value is None:
                 continue
