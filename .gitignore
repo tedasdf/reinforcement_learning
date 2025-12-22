@@ -1,2 +1,7 @@
 *.log
 *.png
+*.pyc
+
+/resources
+
+/env/PufferLib

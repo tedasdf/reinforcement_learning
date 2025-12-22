@@ -18,7 +18,6 @@ class DDQNAgent(DQNAgent):
             batch_size,
             tau
         )
-        self.online_target()
 
 
     def target_calculation(self, next_states_tensor, dones_tensor, rewards_tensor):
