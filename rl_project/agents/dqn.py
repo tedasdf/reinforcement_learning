@@ -2,31 +2,52 @@ import torch, collections, random
 import torch.nn as nn 
 import numpy as np
 
+from rl_project.agents.noisy_net import NoisyLinear
+from rl_project.buffer.replay_buffer import ReplayBuffer
+
 
 class DQNAgent(nn.Module):
     def __init__(self, 
                 state_dim , 
                 hidden_dim, 
                 action_dim,
-                replay_buffer,
-                tau
+                tau,
+                is_noisy = False
             ):
         nn.Module.__init__(self)
         self.q_network = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim,action_dim)
+            nn.ReLU()
         )
+        
         self.target_network = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim,action_dim)
+            nn.ReLU()
         )
-        self.replay_buffer = replay_buffer # ReplayBuffer(capacity , batch_size)
+
+        if is_noisy:
+            self.q_network.add_module(
+                NoisyLinear(
+                    hidden_dim, action_dim
+                )
+            )
+            self.target_network.add_module(
+                NoisyLinear(
+                    hidden_dim, action_dim
+                )
+            )
+        else:
+            self.q_network.add_module(
+                nn.Linear(hidden_dim, action_dim)
+            )
+            self.target_network.add_module(
+                nn.Linear(hidden_dim, action_dim)
+            )
+
 
         ### epsilon 
         self.epsilon_start = 1.0
@@ -58,8 +79,6 @@ class DQNAgent(nn.Module):
         self.target_network.load_state_dict(self.q_network.state_dict())
         self.target_network.eval()
 
-        optimizer = optim.Adam(self.q_network.parameters(), lr=0.001)
-        loss_fn = nn.MSELoss() 
         return optimizer, loss_fn
         
 
@@ -94,26 +113,7 @@ class DQNAgent(nn.Module):
         target_q_values = rewards_tensor + self.gamma * max_next_q_values
         return target_q_values
 
-    def learn(self, state, action, reward, next_state, done):
-        self.replay_buffer.store(state, action, reward, next_state, done)
-        
-        state = next_state
-        self.total_steps += 1
-
-        ## Sample 
-        if not self.replay_buffer.check_length():
-            return None, None
-
-        
-        # Sample mini-batch
-        states_batch, actions_batch, rewards_batch, next_states_batch, dones_batch = self.replay_buffer.sample()
-
-        # --- Convert batch to tensors ---
-        states_tensor = torch.FloatTensor(states_batch)
-        actions_tensor = torch.LongTensor(actions_batch).unsqueeze(1) # Need shape (batch_size, 1) for gather
-        rewards_tensor = torch.FloatTensor(rewards_batch)
-        next_states_tensor = torch.FloatTensor(next_states_batch)
-        dones_tensor = torch.BoolTensor(dones_batch ,dtype=torch.bool) # Use BoolTensor for masking
+    def learn(self, states_tensor, actions_tensor, rewards_tensor, next_states_tensor, dones_tensor):
         
         target_q_values = self.target_calculation(next_states_tensor, dones_tensor, rewards_tensor)
 
@@ -158,6 +158,8 @@ if __name__ == "__main__":
             config=OmegaConf.to_container(cfg, resolve=True),
         )
 
+    replay_buffer = ReplayBuffer(capacity , batch_size)
+
 
     agent = DQNAgent(
         state_dim=state_dim,
@@ -171,10 +173,14 @@ if __name__ == "__main__":
 
 
     
-    optimizer , loss_fn = agent.init_method()
+    optimizer = optim.Adam(self.q_network.parameters(), lr=0.001)
+    loss_fn = nn.MSELoss() 
+
     total_steps  = 0
     episode_rewards = [] 
 
+    
+      
 
     for episode in range(num_episodes):
 
@@ -196,10 +202,26 @@ if __name__ == "__main__":
 
             done = terminated or truncated
             episode_reward += reward
+            replay_buffer.store(state, action, reward, next_state, done)
             
-            predicted_q_value, target_q_values = agent.learn(
-                state, action, reward, next_state, done
-            )
+            state = next_state
+            total_steps += 1
+
+            ## Sample 
+            if replay_buffer.check_length():
+                # Sample mini-batch
+                states_batch, actions_batch, rewards_batch, next_states_batch, dones_batch = replay_buffer.sample()
+
+                # --- Convert batch to tensors ---
+                states_tensor = torch.FloatTensor(states_batch)
+                actions_tensor = torch.LongTensor(actions_batch).unsqueeze(1) # Need shape (batch_size, 1) for gather
+                rewards_tensor = torch.FloatTensor(rewards_batch)
+                next_states_tensor = torch.FloatTensor(next_states_batch)
+                dones_tensor = torch.BoolTensor(dones_batch ,dtype=torch.bool) # Use BoolTensor for masking
+
+                predicted_q_value, target_q_values = agent.learn(
+                    states_tensor, actions_tensor, rewards_tensor, next_states_tensor, dones_tensor
+                )
 
 
             if predicted_q_value is None:
