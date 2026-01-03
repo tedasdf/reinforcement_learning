@@ -106,11 +106,8 @@ if __name__ == "__main__":
         FrameStack
     )
     import gymnasium as gym
-    import ale_py
-    import torch 
-
-
-    import wandb
+    import ale_py, torch , wandb
+    import numpy as np
 
     wandb.init(
         project="actor-critic-atari",
