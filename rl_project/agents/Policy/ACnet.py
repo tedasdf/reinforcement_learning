@@ -172,16 +172,21 @@ if __name__ == "__main__":
 
             loss = agent.loss_fn(action, value, reward, next_value, float(done))
 
-            state = next_state
-            total_steps += 1
-           
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
-            if terminated or truncated:  # end episode if done
-                break
-
-        print(f"Episode {episode+1}: Total Reward = {episode_reward}")
-
+        
+            wandb.log({
+                "loss": loss.item(),
+                "reward": reward,
+                "value": value.item(),
+            }, step=global_step)
+            
+            
+            state = next_state
+            total_steps += 1
+           
+        wandb.log({"episode_reward": episode_reward}, step=global_step)
+        print(f"Episode {episode+1} | Reward: {episode_reward}")
     env.close()
+    wandb.finish()
