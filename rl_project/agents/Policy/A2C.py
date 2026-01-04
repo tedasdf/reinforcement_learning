@@ -49,23 +49,30 @@ gym.register_envs(ale_py)
 if __name__ == "__main__":
     from ACnet import ActorCriticNetwork
     import torch
-    from torch.distributions import Categorical
-
-    
+    import torch.optim as optim
 
     num_envs = 4 
     env_id = "ALE/MsPacman-v5"
 
     gamma = 0.99
+    learning_rate = 1e-4
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
     # Using gymnasium.make_vec is generally preferred for vectorized Atari envs
     # as it handles the wrappers (like resizing/grayscale) more easily.
     envs = gym.make_vec(env_id, num_envs=num_envs)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
+
+    hidden_dim = 128
+    obs_space = envs.single_observation_space
+    action_space = envs.single_action_space
+
+    state_dim = obs_space.shape[0] if len(obs_space.shape) == 1 else obs_space.shape
+    action_dim = action_space.n
     
     agent = ActorCriticNetwork(state_dim, hidden_dim, action_dim).to(device)
-
+    optimizer = optim.Adam(agent.parameters(), lr=learning_rate)
 
     # Reset all environments
     obs, info = envs.reset()
@@ -95,6 +102,7 @@ if __name__ == "__main__":
 
         obs = next_obs
 
+    print(rollout)
 
     #     returns = []
     #     next_value = torch.zeros(num_envs, device=device)  # bootstrap value for last step
