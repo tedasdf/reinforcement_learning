@@ -67,7 +67,7 @@ class ActorCriticNetwork(nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim):
         super().__init__()
 
-        self.backbone = CNNBackbone(in_channels=4)  # frame stack = 4
+        self.backbone = CNNBackbone(in_channels=3)  # frame stack = 4
     
         self.actor = ActorNetwork(self.backbone.output_dim , hidden_dim , action_dim)
         self.critic = CriticNetwork(self.backbone.output_dim , hidden_dim)
@@ -81,19 +81,20 @@ class ActorCriticNetwork(nn.Module):
         return logits, value
 
 
-    def loss_fn(self, action ,value ,reward, next_value , done):
+    def loss_fn(self, action, value, reward, next_value, done, dist):
         log_prob = dist.log_prob(action)
-        # TD target
+
         td_target = reward + self.gamma * next_value * (1 - done)
 
-        # Advantage
+        
         advantage = td_target - value
 
-        actor_loss = -log_prob * advantage.detach()
+        actor_loss = -(log_prob * advantage.detach()).mean()
+        critic_loss = advantage.pow(2).mean()
+        entropy = dist.entropy().mean()
 
-        critic_loss = advantage.pow(2)
-        loss = actor_loss + critic_loss
-        return loss
+        return actor_loss + 0.5 * critic_loss - 0.01 * entropy
+
     
 
 if __name__ == "__main__":
@@ -101,9 +102,9 @@ if __name__ == "__main__":
     import torch.optim as optim
     import torch.nn as nn
     from gymnasium.wrappers import (
-        ResizeObservation,
-        GrayScaleObservation,
-        FrameStack
+        GrayscaleObservation, 
+        ResizeObservation, 
+        FrameStackObservation
     )
     import gymnasium as gym
     import ale_py, torch , wandb
@@ -111,7 +112,7 @@ if __name__ == "__main__":
 
     wandb.init(
         project="actor-critic-atari",
-        name="ms_pacman_cnn_ac",
+        name="ms_pacman_cnn_ac_testing2",
         config={
             "lr": 1e-4,
             "gamma": 0.99,
@@ -121,72 +122,88 @@ if __name__ == "__main__":
 
     gym.register_envs(ale_py)
 
-    env = gym.make('ALE/Pacman-v5', render_mode="human")  # render_mode="human" shows the game
-    env = GrayScaleObservation(env)
-    env = ResizeObservation(env, (84, 84))
-    env = FrameStack(env, 4)
-    num_episodes = 5  # number of episodes to run
+    env = gym.make('ALE/Pacman-v5', render_mode="rgb_array")  # render_mode="human" shows the game
+    env = GrayscaleObservation(env, keep_dim=False) # Result: (210, 160)
+    env = ResizeObservation(env, (84, 84))          # Result: (84, 84)
+    env = FrameStackObservation(env, stack_size=3)
+    num_episodes = 5000  # number of episodes to run
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
     hidden_dim = 128
-
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     total_steps  = 0
 
-    agent = ActorCriticNetwork(state_dim, hidden_dim , action_dim)
-    optimizer = optim.Adam(agent.parameters(), lr=0.001)
+    agent = ActorCriticNetwork(state_dim, hidden_dim, action_dim).to(device)
+    optimizer = optim.AdamW(agent.parameters(), lr=0.001)
 
 
     global_step = 0 
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
     for episode in range(num_episodes):
+
         state, _ = env.reset()  # reset env at start of each episode
         episode_reward = 0
         done = False
 
+        episode_frames = [] # Collect frames for wandb video
+
         while not done :   
 
-            state_tensor = torch.tensor(
-                np.array(state), dtype=torch.float32, device=device
-            ).unsqueeze(0) / 255.0
-
+             # If shape is (84, 84, 4), we need to move the 4 to the front
+            state_tensor = torch.from_numpy(np.array(state)).float().to(device)
+            if state_tensor.ndim == 3:
+                state_tensor = state_tensor.unsqueeze(0) # Add batch dim -> (1, 3, 84, 84)
+            state_tensor /= 255.0
             # Forward pass
-            logits, value = agent(state)
+
+            logits, value = agent(state_tensor)
                 
             dist = torch.distributions.Categorical(logits=logits)
             action = dist.sample()
             
             next_state, reward, terminated, truncated, info = env.step(action.item())
-            frame = env.render()
+            if episode % 1 == 0: 
+                # RGB array needs to be (Channels, Height, Width) for wandb.Video
+                frame = env.render()
+                episode_frames.append(np.transpose(frame, (2, 0, 1)))
 
             done = terminated or truncated
             episode_reward += reward
 
             with torch.no_grad():
-                next_state_tensor = torch.tensor(
-                    np.array(next_state), dtype=torch.float32, device=device
-                ).unsqueeze(0) / 255.0
-                _, next_value = agent(next_state)
+                next_state_tensor = torch.from_numpy(np.array(next_state)).float().to(device)
+                if next_state_tensor.ndim == 3:
+                    next_state_tensor = next_state_tensor.unsqueeze(0) # Add batch dim -> (1, 3, 84, 84)
+                next_state_tensor /= 255.0
+                _, next_value = agent(next_state_tensor)
 
-            loss = agent.loss_fn(action, value, reward, next_value, float(done))
+            
+
+            loss = agent.loss_fn(action, value, reward, next_value, float(done), dist)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
         
+            # Inside the while loop (Every Step)
             wandb.log({
                 "loss": loss.item(),
                 "reward": reward,
-                "value": value.item(),
-            }, step=global_step)
-            
+                "value": value.item()
+            })
+
             
             state = next_state
             total_steps += 1
-           
-        wandb.log({"episode_reward": episode_reward}, step=global_step)
+
+        # Log to WandB
+        log_data = {"episode_reward": episode_reward, "episode": episode}
+        
+        if episode_frames:
+            # Log as a video to see the agent actually playing
+            log_data["gameplay_video"] = wandb.Video(np.array(episode_frames), fps=30, format="mp4")
+        
+        wandb.log(log_data)
         print(f"Episode {episode+1} | Reward: {episode_reward}")
-    env.close()
+        
     wandb.finish()
