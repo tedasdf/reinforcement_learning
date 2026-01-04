@@ -8,6 +8,16 @@
 # import torch.nn as nn
 # import numpy as np
 
+
+import importlib
+
+def instantiate_target(target_str, **kwargs):
+    module_name, class_name = target_str.rsplit(".", 1)
+    module = importlib.import_module(module_name)
+    cls = getattr(module, class_name)
+    return cls(**kwargs)
+
+
 # def build_network(
 #     obs_shape,
 #     action_dim,
@@ -49,3 +59,14 @@
 
 
 # def 
+
+
+class CNN_network():
+    def __init__():
+        raise NotImplementedError
+    
+    def forward():
+        raise NotImplementedError
+
+def build_network():
+    raise NotImplementedError
