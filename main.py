@@ -1,30 +1,86 @@
+from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
+import gymnasium as gym
+import ale_py, wandb
 
+import wandb
+import numpy as np
 
+class WandBLogger:
+    def __init__(self, project_name, run_name, config=None):
+        """
+        Initialize a WandB run.
+        """
+        self.project_name = project_name
+        self.run_name = run_name
+        self.config = config or {}
+        
+        wandb.init(project=project_name, name=run_name, config=config)
+        
+        self.episode_frames = []
+        self.current_episode = 0
 
-class WandbLogger():
-    def __init__(self):
-        raise NotImplementedError
-    
+    def log_step(self, reward, loss=None, value=None, extra_info=None):
+        """
+        Log data at every step.
+        """
+        log_dict = {"reward": reward}
+        if loss is not None:
+            log_dict["loss"] = loss
+        if value is not None:
+            log_dict["value"] = value
+        if extra_info:
+            log_dict.update(extra_info)
+        wandb.log(log_dict)
 
+    def store_frame(self, frame):
+        """
+        Store a frame for video logging.
+        Frame shape should be (H, W, C)
+        """
+        self.episode_frames.append(np.transpose(frame, (2, 0, 1)))  # C,H,W for wandb.Video
+
+    def log_episode(self, episode_reward):
+        """
+        Log data at the end of an episode, including video if available.
+        """
+        log_dict = {
+            "episode": self.current_episode,
+            "episode_reward": episode_reward
+        }
+        if self.episode_frames:
+            log_dict["gameplay_video"] = wandb.Video(
+                np.array(self.episode_frames), fps=30, format="mp4"
+            )
+        wandb.log(log_dict)
+        self.episode_frames = []  # Clear frames for next episode
+        self.current_episode += 1
+
+    def finish(self):
+        wandb.finish()
+
+ 
 
 def env_prep():
-    raise NotImplementedError
+    #### env prep
+    # For vectorized envs
+    env = gym.vector.SyncVectorEnv([make_wrapped_env for _ in range(4)])
+    return env
+
 
 def agent_prep():
     raise NotImplementedError
 
-from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
-import gymnasium as gym
 
 def make_wrapped_env():
+    gym.register_envs(ale_py)
     env = gym.make("ALE/MsPacman-v5", render_mode="rgb_array")
     env = GrayscaleObservation(env, keep_dim=False)
     env = ResizeObservation(env, (84, 84))
     env = FrameStackObservation(env, stack_size=4)
     return env
 
-# For vectorized envs
-vec_env = gym.vector.SyncVectorEnv([make_wrapped_env for _ in range(4)])
+def set_up_agent():
+    raise NotImplementedError
 
 
 if __name__ == "__main__":
@@ -40,57 +96,80 @@ if __name__ == "__main__":
     print_every = 10
 
 
-
-
-
-
-
-
-    #### env prep
-
-
+    env = env_prep()
+ 
+    
     #### agent prep
-
+    agent = agent_prep()
     #### the loop
 
 
+    for episode in range(max_episodes):
+        
+        state, _ = env.reset()
+        epsiode_reward = 0
+        done = False
 
 
-    import wandb
-    import torch.optim as optim
-    import torch.nn as nn
-    import numpy as np
-    from omegaconf import OmegaConf
-    import gymnasium as gym
-    import ale_py
+        while not done :
+            
+            ### agent preprocess
+            
 
-    gym.register_envs(ale_py)
+            next_state, reward , terminated, truncated, info = env.step(action.item())
+            done = terminated or truncated
+            
+            episode_reward += reward
+
+        
+            ### agent postprocess
+
+            ###
+            loss = agent.loss()
+            
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
 
-    # cfg = OmegaConf.load("rl_project/configs/base.yaml")
 
-        # Create the environment
-    env = gym.make('ALE/Pacman-v5', render_mode="human")  # render_mode="human" shows the game
+
+
+    # import wandb
+    # import torch.optim as optim
+    # import torch.nn as nn
+    # import numpy as np
+    # from omegaconf import OmegaConf
+    # import gymnasium as gym
+    # import ale_py
+
+    # gym.register_envs(ale_py)
+
+
+    # # cfg = OmegaConf.load("rl_project/configs/base.yaml")
+
+    #     # Create the environment
+    # env = gym.make('ALE/Pacman-v5', render_mode="human")  # render_mode="human" shows the game
 
     
-    num_episodes = 5  # number of episodes to run
-    max_steps = 1000  # max steps per episode
+    # num_episodes = 5  # number of episodes to run
+    # max_steps = 1000  # max steps per episode
 
-    for episode in range(num_episodes):
-        obs, info = env.reset()  # reset env at start of each episode
-        total_reward = 0
+    # for episode in range(num_episodes):
+    #     obs, info = env.reset()  # reset env at start of each episode
+    #     total_reward = 0
 
-        for step in range(max_steps):
-            action = env.action_space.sample()  # take a random action
-            obs, reward, terminated, truncated, info = env.step(action)
-            total_reward += reward
+    #     for step in range(max_steps):
+    #         action = env.action_space.sample()  # take a random action
+    #         obs, reward, terminated, truncated, info = env.step(action)
+    #         total_reward += reward
 
-            if terminated or truncated:  # end episode if done
-                break
+    #         if terminated or truncated:  # end episode if done
+    #             break
 
-        print(f"Episode {episode+1}: Total Reward = {total_reward}")
+    #     print(f"Episode {episode+1}: Total Reward = {total_reward}")
 
-    env.close()
+    # env.close()
     # state_dim = env.observation_space.shape[0]
     # action_dim = env.action_space.n
 
