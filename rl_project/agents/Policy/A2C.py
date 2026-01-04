@@ -1,108 +1,115 @@
 import torch.nn as nn
-
-
-class ActorNet():
-    def __init__(self):
-        raise NotImplementedError
-    def forward(self):
-        raise NotImplementedError
-
-class CriticNet():
-    def __init__(self):
-        raise NotImplementedError
-    def forward(self):
-        raise NotImplementedError
-    
-
-# class A2Cnetwork(nn.Module):
-#     def __init__(self, n_actor):
-        
-
-#         for i in 
-
-
-
-class A2Cnetwork(nn.Module):
-    def __init__(self, n_actor):
-        raise NotImplementedError
-    
-    def forward():
-        raise NotImplementedError
-    
-    def loss():
-        raise NotImplementedError
-    
-
-    def collect():
-        raise NotImplementedError
-    
-
-
-
-
 import gymnasium as gym
 import ale_py
+import torch
+import torch.optim as optim
+from torch.distributions import Categorical
+from ACnet import ActorCriticNetwork
+import numpy as np
 
-# Register ALE environments with Gymnasium
+# Register ALE environments
 gym.register_envs(ale_py)
 
 if __name__ == "__main__":
-    from ACnet import ActorCriticNetwork
-    import torch
-    import torch.optim as optim
 
-    num_envs = 4 
+    num_envs = 4
     env_id = "ALE/MsPacman-v5"
-
     gamma = 0.99
     learning_rate = 1e-4
+    hidden_dim = 128
+    n_steps = 5  # n-step rollout
+    max_episodes = 500
+    print_every = 10
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-    # Using gymnasium.make_vec is generally preferred for vectorized Atari envs
-    # as it handles the wrappers (like resizing/grayscale) more easily.
+    # Vectorized env
     envs = gym.make_vec(env_id, num_envs=num_envs)
-
-    hidden_dim = 128
     obs_space = envs.single_observation_space
     action_space = envs.single_action_space
-
-    state_dim = obs_space.shape[0] if len(obs_space.shape) == 1 else obs_space.shape
     action_dim = action_space.n
-    
-    agent = ActorCriticNetwork(state_dim, hidden_dim, action_dim).to(device)
+
+    # Create shared Actor-Critic network
+    agent = ActorCriticNetwork(4, hidden_dim, action_dim).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=learning_rate)
 
-    # Reset all environments
+    # Reset environments
     obs, info = envs.reset()
+    episode_rewards = np.zeros(num_envs)
 
-    n_steps = 5 
-    rollout = [] 
+    total_episodes = 0
+    while total_episodes < max_episodes:
 
-    for step in range(n_steps):
-        
+        rollout = []
+
+        # 1️⃣ Collect n-step rollout
+        for step_idx in range(n_steps):
+            obs_tensor = torch.from_numpy(obs).float().to(device) / 255.0
+            logits, values = agent(obs_tensor)
+            dist = Categorical(logits=logits)
+            actions = dist.sample()
+
+            next_obs, rewards, terminateds, truncateds, infos = envs.step(actions.cpu().numpy())
+            dones = terminateds | truncateds
+
+            # Track cumulative rewards
+            episode_rewards += rewards
+
+            # Store rollout data
+            rollout.append({
+                'obs': obs_tensor,
+                'logits': logits,
+                'values': values.squeeze(-1),
+                'actions': actions,
+                'log_probs': dist.log_prob(actions),
+                'rewards': torch.tensor(rewards, device=device, dtype=torch.float),
+                'dones': torch.tensor(dones, device=device, dtype=torch.float)
+            })
+
+            # Reset episode rewards for finished episodes
+            for i, done in enumerate(dones):
+                if done:
+                    total_episodes += 1
+                    print(f"Env {i} finished episode {total_episodes}, reward: {episode_rewards[i]}")
+                    episode_rewards[i] = 0
+
+            obs = next_obs
+
+        # 2️⃣ Compute n-step returns
         obs_tensor = torch.from_numpy(obs).float().to(device) / 255.0
-        logits, value = agent(obs_tensor)
+        _, next_value = agent(obs_tensor)
+        next_value = next_value.squeeze(-1)
 
-        dist = torch.distributions.Categorical(logits)
-        actions = dist.samples()
+        returns = []
+        R = next_value
+        for step in reversed(rollout):
+            R = step['rewards'] + gamma * R * (1 - step['dones'])
+            returns.insert(0, R)
 
-        next_obs, rewards, dones, infos = envs.step(actions.cpu().numpy())
+        # 3️⃣ Compute actor, critic, and entropy loss
+        actor_loss, critic_loss, entropy_loss = 0, 0, 0
+        for step, R in zip(rollout, returns):
+            advantage = R - step['values']
+            actor_loss += -(step['log_probs'] * advantage.detach()).mean()
+            critic_loss += advantage.pow(2).mean()
+            dist = Categorical(logits=step['logits'])
+            entropy_loss += dist.entropy().mean()
 
-        # Store step data
-        rollout.append({
-            'obs': obs_tensor,
-            'actions': actions,
-            'rewards': torch.tensor(rewards, device=device, dtype=torch.float),
-            'values': value.squeeze(-1),
-            'dones': torch.tensor(dones, device=device, dtype=torch.float),
-            'log_probs': dist.log_prob(actions)
-        })
+        actor_loss /= n_steps
+        critic_loss /= n_steps
+        entropy_loss /= n_steps
 
-        obs = next_obs
+        loss = actor_loss + 0.5 * critic_loss - 0.01 * entropy_loss
 
-    print(rollout)
+        # 4️⃣ Backprop & update
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        rollout = []
+
+    envs.close()
+
 
     #     returns = []
     #     next_value = torch.zeros(num_envs, device=device)  # bootstrap value for last step
