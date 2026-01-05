@@ -12,14 +12,33 @@ gym.register_envs(ale_py)
 
 if __name__ == "__main__":
 
+    import wandb
+
+
     num_envs = 4
     env_id = "ALE/MsPacman-v5"
     gamma = 0.99
     learning_rate = 1e-4
     hidden_dim = 128
     n_steps = 5  # n-step rollout
-    max_episodes = 500
+    max_episodes = 5000
     print_every = 10
+
+
+    wandb.init(
+        project="actor-critic-atari",
+        name="pacman-vectorized-nstep",
+        config={
+            "learning_rate": learning_rate,
+            "n_steps": n_steps,
+            "num_envs": num_envs,
+            "gamma": gamma,
+            "entropy_coef": 0.01,
+            "critic_coef": 0.5,
+        }
+    )
+
+
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -41,6 +60,7 @@ if __name__ == "__main__":
     while total_episodes < max_episodes:
 
         rollout = []
+        episode_frames = [] # Collect frames for wandb video
 
         # 1️⃣ Collect n-step rollout
         for step_idx in range(n_steps):
@@ -50,6 +70,12 @@ if __name__ == "__main__":
             actions = dist.sample()
 
             next_obs, rewards, terminateds, truncateds, infos = envs.step(actions.cpu().numpy())
+            frame = envs.render() 
+            if frame is not None:
+                # wandb.Video expects (Channels, Height, Width) for each frame
+                # So we transpose from (H, W, C) to (C, H, W)
+                episode_frames.append(frame.transpose(2, 0, 1))
+                    
             dones = terminateds | truncateds
 
             # Track cumulative rewards
@@ -106,106 +132,23 @@ if __name__ == "__main__":
         loss.backward()
         optimizer.step()
 
+        # LOGGING LOGIC
+        log_data = {
+            "train/total_loss": loss.item(),
+            "train/actor_loss": actor_loss.item(),
+            "train/critic_loss": critic_loss.item(),
+            "train/entropy": entropy_loss.item(),
+        }
+
+        # Only upload video every 50 episodes to save time/bandwidth
+        if total_episodes % 50 == 0 and len(episode_frames) > 0:
+            # Stack frames into (Time, Channels, Height, Width)
+            video_array = np.array(episode_frames)
+            log_data["gameplay_video"] = wandb.Video(video_array, fps=30, format="mp4")
+            # Clear frames so we don't log the same ones twice
+            episode_frames = [] 
+
+        wandb.log(log_data)
         rollout = []
 
     envs.close()
-
-
-    #     returns = []
-    #     next_value = torch.zeros(num_envs, device=device)  # bootstrap value for last step
-
-    #     for step in reversed(rollout):
-    #         reward = step['rewards']
-    #         done = step['dones']
-    #         next_value = reward + gamma * next_value * (1 - done)
-    #         returns.insert(0, next_value)
-
-
-
-    #     actor_loss = 0
-    #     critic_loss = 0
-    #     entropy_loss = 0
-
-    #     for step, R in zip(rollout, returns):
-    #         advantage = R - step['values']
-    #         actor_loss += -(step['log_probs'] * advantage.detach()).mean()
-    #         critic_loss += advantage.pow(2).mean()
-    #         # entropy bonus
-    #         dist = torch.distributions.Categorical(logits=agent(step['obs'])[0])
-    #         entropy_loss += dist.entropy().mean()
-
-    #     # Average over steps
-    #     actor_loss /= n_steps
-    #     critic_loss /= n_steps
-    #     entropy_loss /= n_steps
-
-    #     loss = actor_loss + 0.5 * critic_loss - 0.01 * entropy_loss
-
-
-    # logits = agent(obs_tensor)
-
-    # dist = Categorical(logits=logits)
-    # actions = dist.sample()
-    # # Take random actions
-    # actions = envs.action_space.sample()
-    # next_obs, rewards, terminations, truncations, infos = envs.step(actions.cpu().numpy())
-
-    envs.close()
-
-    # from gymnasium.wrappers import (
-    #     GrayscaleObservation, 
-    #     ResizeObservation, 
-    #     FrameStackObservation
-    # )
-    # import gymnasium as gym
-    # import ale_py
-    # import numpy as np
-
-
-    # gym.register_envs(ale_py)
-
-    # env = gym.make('ALE/Pacman-v5', render_mode="rgb_array")  # render_mode="human" shows the game
-    # env = GrayscaleObservation(env, keep_dim=False) # Result: (210, 160)
-    # env = ResizeObservation(env, (84, 84))          # Result: (84, 84)
-    # env = FrameStackObservation(env, stack_size=3)
-
-    # envs = pufferlib.vector.make(
-    #     make_pacman_env,
-    #     num_envs=8,
-    #     backend=pufferlib.vector.Serial # <-- FIX IS HERE
-    # )
-
-    # # Standard RL loop usage
-    # obs, infos = envs.reset()
-    
-
-    # print(f"Observation Shape: {obs.shape}") 
-    # assert obs.shape == (8, 3, 84, 84), "Unexpected observation shape!"
-
-    # # 3. Take a test step
-    # # Create random actions for all 8 environments
-    # actions = np.array([envs.single_action_space.sample() for _ in range(8)])
-    # next_obs, rewards, terminals, truncateds, infos = envs.step(actions)
-
-    # # 4. Verify outputs
-    # print(f"Rewards: {rewards}")
-    # print(f"Terminals: {terminals}")
-    # print(f"Step successful!")
-
-    # actor_1 = ActorNet()
-    # actor_2 = ActorNet()
-    
-
-
-    # gym.register_envs(ale_py)
-
-    # env = gym.make('ALE/Pacman-v5', render_mode="rgb_array")  # render_mode="human" shows the game
-    # env = GrayscaleObservation(env, keep_dim=False) # Result: (210, 160)
-    # env = ResizeObservation(env, (84, 84))          # Result: (84, 84)
-    # env = FrameStackObservation(env, stack_size=3)
-
-    # state, _ = env.reset()  # reset env at start of each episode
-
-
-    # logits_1, value_1 = actor_1(state)
-    # logits_2 , value_2 = actor_2(state)
