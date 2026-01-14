@@ -1,9 +1,9 @@
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
 import gymnasium as gym
-import ale_py, wandb
-
-import wandb
+import ale_py, wandb, torch
 import numpy as np
+from omegaconf import OmegaConf
+from hydra.utils import instantiate
 
 class WandBLogger:
     def __init__(self, project_name, run_name, config=None):
@@ -59,16 +59,11 @@ class WandBLogger:
         wandb.finish()
 
  
-
 def env_prep():
     #### env prep
     # For vectorized envs
     env = gym.vector.SyncVectorEnv([make_wrapped_env for _ in range(4)])
     return env
-
-
-def agent_prep():
-    raise NotImplementedError
 
 
 def make_wrapped_env():
@@ -79,12 +74,16 @@ def make_wrapped_env():
     env = FrameStackObservation(env, stack_size=4)
     return env
 
-def set_up_agent():
-    raise NotImplementedError
+def set_up_agent(cfg, env):
+    return instantiate(
+        cfg,
+        in_channels=env.observation_space.shape[0],
+        action_dim=env.action_space.n,
+        _convert_="none",
+    )
 
 
 if __name__ == "__main__":
-
 
     num_envs = 4
     env_id = "ALE/MsPacman-v5"
@@ -95,14 +94,22 @@ if __name__ == "__main__":
     max_episodes = 500
     print_every = 10
 
+    cfg = OmegaConf.create(
+        {
+            "_target_": "rl_project.agents.Policy.ACnet.ActorCriticNetwork",
+            "hidden_dim": 256
+        }
+    )
+
 
     env = env_prep()
  
     
     #### agent prep
-    agent = agent_prep()
+    agent = set_up_agent(cfg)
     #### the loop
 
+    optimizer = torch.optim.Adam(agent.parameters(), lr=learning_rate)
 
     for episode in range(max_episodes):
         
@@ -113,23 +120,31 @@ if __name__ == "__main__":
 
         while not done :
             
-            ### agent preprocess
-            
+            for _ in range(n_steps):
+                state_tensor = torch.as_tensor(state).float().to(device) / 255.0
 
-            next_state, reward , terminated, truncated, info = env.step(action.item())
-            done = terminated or truncated
-            
-            episode_reward += reward
 
+                ### agent preprocess
+
+
+                next_state, reward , terminated, truncated, info = env.step(action.item())
+                done = terminated or truncated
+                
+                episode_reward += reward
+
+                ### agent memory 
+
+                
+                if done:
+                    break
+        ### agent postprocess
+
+        ###
+        loss = agent.loss()
         
-            ### agent postprocess
-
-            ###
-            loss = agent.loss()
-            
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
 
 

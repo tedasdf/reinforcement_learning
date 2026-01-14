@@ -80,22 +80,26 @@ class ActorCriticNetwork(nn.Module):
         features = self.backbone(state)
         logits = self.actor(features)
         value = self.critic(features)
-        return logits, value
+                        
+        dist = torch.distributions.Categorical(logits=logits)
+        action = dist.sample()
+        return  action , logits, value, dist
     
     # bootstrap
-    def bootstrap(self):
+    def bootstrap(self, next_state, device):
         with torch.no_grad():
-            if done:
-                next_value = torch.zeros(1, device=device)
-            else:
-                _, next_value = self(torch.as_tensor(obs))
+            next_state_tensor = torch.from_numpy(np.array(next_state)).float().to(device)
+            if next_state_tensor.ndim == 3:
+                next_state_tensor = next_state_tensor.unsqueeze(0) # Add batch dim -> (1, 3, 84, 84)
+            next_state_tensor /= 255.0
+            _, next_value = agent(next_state_tensor)
+        return next_value
 
 
-    
     def loss_fn(self, action, value, reward, next_value, done, dist):
         log_prob = dist.log_prob(action)
 
-        td_target = reward + self.gamma * next_value * (1 - done)
+        td_target = reward + self.gamma * next_value.detach() * (1 - done)
 
         
         advantage = td_target - value
@@ -107,25 +111,8 @@ class ActorCriticNetwork(nn.Module):
         return actor_loss + 0.5 * critic_loss - 0.01 * entropy
 
 
-class ActorCriticNetworkKai(AbstractAgent):
-    def __init__(self, in_channels):
-        self.backbone = CNNBackbone(in_channels=in_channels)  # frame stack = 4
-        self.actor = ActorNetwork(self.backbone.output_dim , hidden_dim , action_dim)
-        self.critic = CriticNetwork(self.backbone.output_dim , hidden_dim)
-
-    def forward(self, state):
-        features = self.backbone(state)
-        logits = self.actor(features)
-        value = self.critic(features)
-        return logits, value
 
 
-    def act(self):
-        logits, value = agent(state_tensor)
-                
-        dist = torch.distributions.Categorical(logits=logits)
-        action = dist.sample()
-        return action , logits ,value
 
 if __name__ == "__main__":
 
@@ -139,6 +126,10 @@ if __name__ == "__main__":
     import gymnasium as gym
     import ale_py, torch , wandb
     import numpy as np
+
+
+    n_step = 5
+
 
     wandb.init(
         project="actor-critic-atari",
@@ -178,33 +169,33 @@ if __name__ == "__main__":
         episode_frames = [] # Collect frames for wandb video
 
         while not done :   
-
-            # If shape is (84, 84, 4), we need to move the 4 to the front
-            state_tensor = torch.from_numpy(np.array(state)).float().to(device)
-            if state_tensor.ndim == 3:
-                state_tensor = state_tensor.unsqueeze(0) # Add batch dim -> (1, 3, 84, 84)
-            state_tensor /= 255.0
-            # Forward pass
-
-            action , logits, value = agent(state_tensor)
-                
             
-            next_state, reward, terminated, truncated, info = env.step(action.item())
-            if episode % 1 == 0: 
-                # RGB array needs to be (Channels, Height, Width) for wandb.Video
-                frame = env.render()
-                episode_frames.append(np.transpose(frame, (2, 0, 1)))
+            rollout_data = []
 
-            done = terminated or truncated
-            episode_reward += reward
+            for _ in range(n_step):
+                # If shape is (84, 84, 4), we need to move the 4 to the front
+                state_tensor = torch.from_numpy(np.array(state)).float().to(device)
+                if state_tensor.ndim == 3:
+                    state_tensor = state_tensor.unsqueeze(0) # Add batch dim -> (1, 3, 84, 84)
+                state_tensor /= 255.0
+                # Forward pass
 
-            with torch.no_grad():
-                next_state_tensor = torch.from_numpy(np.array(next_state)).float().to(device)
-                if next_state_tensor.ndim == 3:
-                    next_state_tensor = next_state_tensor.unsqueeze(0) # Add batch dim -> (1, 3, 84, 84)
-                next_state_tensor /= 255.0
-                _, next_value = agent(next_state_tensor)
+                action , logits, value, dist = agent(state_tensor)
+                    
+                
+                next_state, reward, terminated, truncated, info = env.step(action.item())
+                if episode % 1 == 0: 
+                    # RGB array needs to be (Channels, Height, Width) for wandb.Video
+                    frame = env.render()
+                    episode_frames.append(np.transpose(frame, (2, 0, 1)))
 
+                done = terminated or truncated
+                rollout_data.append((value, reward, dist.log_prob(action), dist.entropy()))
+                state = next_state
+                episode_reward += reward
+                if done: break
+
+            next_value = agent.bootstrap(next_state, device)
             
 
             loss = agent.loss_fn(action, value, reward, next_value, float(done), dist)
@@ -235,3 +226,30 @@ if __name__ == "__main__":
         print(f"Episode {episode+1} | Reward: {episode_reward}")
         
     wandb.finish()
+
+
+
+
+
+    # class ActorCriticNetworkKai(AbstractAgent):
+#     def __init__(self, in_channels):
+#         self.backbone = CNNBackbone(in_channels=in_channels)  # frame stack = 4
+
+#         self.actor = ActorNetwork(self.backbone.output_dim , hidden_dim , action_dim)
+#         self.critic = CriticNetwork(self.backbone.output_dim , hidden_dim)
+
+#     def forward(self, state):
+#         features = self.backbone(state)
+#         logits = self.actor(features)
+#         value = self.critic(features)
+#         return logits, value
+
+
+#     def act(self):
+#         logits, value = agent(state_tensor)
+                
+#         dist = torch.distributions.Categorical(logits=logits)
+#         action = dist.sample()
+#         return action , logits ,value
+    
+#     def boostrap(self):
