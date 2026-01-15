@@ -1,0 +1,22 @@
+# configs/pacman_config.yaml
+
+# Environment settings
+env:
+  id: "ALE/MsPacman-v5"
+  render_mode: "rgb_array"
+  frame_stack: 3
+  screen_size: 84
+
+# Training Hyperparameters
+training:
+  gamma: 0.99
+  learning_rate: 0.0001
+  n_steps: 5
+  max_episodes: 500
+  print_every: 10
+  device: "cuda" # PyTorch uses 'cuda' for GPU
+
+
+model:
+  _target_: "rl_project_new.algorithms.ACnet.ActorCriticNetwork"
+  hidden_dim: 256

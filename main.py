@@ -1,78 +1,31 @@
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
 import gymnasium as gym
-import ale_py, wandb, torch
+from rl_project_new.agents.base import PolicyRLAgent
+from rl_project_new.algorithms.ACnet import ActorCriticNetwork
+import ale_py, torch
 import numpy as np
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
 
-class WandBLogger:
-    def __init__(self, project_name, run_name, config=None):
-        """
-        Initialize a WandB run.
-        """
-        self.project_name = project_name
-        self.run_name = run_name
-        self.config = config or {}
-        
-        wandb.init(project=project_name, name=run_name, config=config)
-        
-        self.episode_frames = []
-        self.current_episode = 0
+from wandb_logger import WandBLogger
 
-    def log_step(self, reward, loss=None, value=None, extra_info=None):
-        """
-        Log data at every step.
-        """
-        log_dict = {"reward": reward}
-        if loss is not None:
-            log_dict["loss"] = loss
-        if value is not None:
-            log_dict["value"] = value
-        if extra_info:
-            log_dict.update(extra_info)
-        wandb.log(log_dict)
-
-    def store_frame(self, frame):
-        """
-        Store a frame for video logging.
-        Frame shape should be (H, W, C)
-        """
-        self.episode_frames.append(np.transpose(frame, (2, 0, 1)))  # C,H,W for wandb.Video
-
-    def log_episode(self, episode_reward):
-        """
-        Log data at the end of an episode, including video if available.
-        """
-        log_dict = {
-            "episode": self.current_episode,
-            "episode_reward": episode_reward
-        }
-        if self.episode_frames:
-            log_dict["gameplay_video"] = wandb.Video(
-                np.array(self.episode_frames), fps=30, format="mp4"
-            )
-        wandb.log(log_dict)
-        self.episode_frames = []  # Clear frames for next episode
-        self.current_episode += 1
-
-    def finish(self):
-        wandb.finish()
-
- 
 def env_prep():
     #### env prep
     # For vectorized envs
     env = gym.vector.SyncVectorEnv([make_wrapped_env for _ in range(4)])
     return env
 
-
-def make_wrapped_env():
+def make_wrapped_env(cfg):
     gym.register_envs(ale_py)
-    env = gym.make("ALE/MsPacman-v5", render_mode="rgb_array")
-    env = GrayscaleObservation(env, keep_dim=False)
-    env = ResizeObservation(env, (84, 84))
-    env = FrameStackObservation(env, stack_size=4)
-    return env
+    env = gym.make(cfg.env.id, render_mode=cfg.env.render_mode)  # render_mode="human" shows the game
+    env = GrayscaleObservation(env, keep_dim=False) # Result: (210, 160)
+    env = ResizeObservation(env, (84, 84))          # Result: (84, 84)
+    env = FrameStackObservation(env, stack_size=cfg.env.frame_stack)
+    
+    state_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.n
+
+    return env, action_dim, state_dim
 
 def set_up_agent(cfg, env):
     return instantiate(
@@ -85,68 +38,94 @@ def set_up_agent(cfg, env):
 
 if __name__ == "__main__":
 
-    num_envs = 4
-    env_id = "ALE/MsPacman-v5"
-    gamma = 0.99
-    learning_rate = 1e-4
-    hidden_dim = 128
-    n_steps = 5  # n-step rollout
-    max_episodes = 500
-    print_every = 10
-
-    cfg = OmegaConf.create(
-        {
-            "_target_": "rl_project.agents.Policy.ACnet.ActorCriticNetwork",
-            "hidden_dim": 256
-        }
-    )
-
-
-    env = env_prep()
- 
+    cfg = OmegaConf.load("rl_project_new/configs/ACnet/base.yaml")
     
+    ## device
+    if cfg.training.device == "cuda" and torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+    print(f"Using device: {device}")
+
+    env, action_dim, state_dim = make_wrapped_env(cfg)
+ 
+    print(f"Environment ID: {cfg.env.id} Action Dimension: {action_dim} State Dimension: {state_dim}")
+
     #### agent prep
-    agent = set_up_agent(cfg)
+    ac_net = instantiate(
+        cfg.model, 
+        in_channels=cfg.env.frame_stack, 
+        action_dim=env.action_space.n,
+    ).to(device)
+
+    # Wrap ACnet in your Manager class
+    agent = PolicyRLAgent(network=ac_net, gamma=cfg.training.gamma , device=device )   
+
     #### the loop
+    optimizer = torch.optim.Adam(ac_net.parameters(), lr=cfg.training.learning_rate)
 
-    optimizer = torch.optim.Adam(agent.parameters(), lr=learning_rate)
+    max_episodes = cfg.training.max_episodes
+    n_steps = cfg.training.n_steps
+    print_every = cfg.training.print_every
 
+    logger = WandBLogger(
+        project_name="Pacman-RL", 
+        run_name="A2C-NStep-Run", 
+        config=OmegaConf.to_container(cfg)
+    )
+    
     for episode in range(max_episodes):
-        
         state, _ = env.reset()
-        epsiode_reward = 0
+        episode_reward = 0
         done = False
 
-
         while not done :
-            
             for _ in range(n_steps):
                 state_tensor = torch.as_tensor(state).float().to(device) / 255.0
-
+                if state_tensor.ndim == 3: state_tensor = state_tensor.unsqueeze(0)
 
                 ### agent preprocess
-
-
-                next_state, reward , terminated, truncated, info = env.step(action.item())
-                done = terminated or truncated
+                action, value, dist = agent.get_action(state_tensor)
                 
+                next_state, reward, term, trunc, _ = env.step(action.item())
+                # Agent stores this transition in its local memory
+                agent.store_transition(value, reward, action, dist)
+                
+                if episode % cfg.training.print_every == 0:
+                    # Use the 'original' rgb frame from info if available, or current state
+                    logger.store_frame(env.render())
+                    
                 episode_reward += reward
+                state = next_state
+                done = term or trunc
+                if done: break
+            
+            ### agent memory 
+            state_tensor = torch.as_tensor(state).float().to(device) / 255.0
+            if state_tensor.ndim == 3: state_tensor = state_tensor.unsqueeze(0)
 
-                ### agent memory 
+            loss = agent.compute_n_step_loss(state_tensor, done)
+            
+            optimizer.zero_grad()
+            loss.backward()
+            grad_norm = torch.nn.utils.clip_grad_norm_(agent.network.parameters(), 0.5)
+            optimizer.step()
 
-                
-                if done:
-                    break
-        ### agent postprocess
+            agent.memory_clear()
 
-        ###
-        loss = agent.loss()
+            logger.log_step(
+                reward=reward, 
+                loss=loss.item(), 
+                extra_info={"grad_norm": grad_norm.item()}
+            )
         
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        logger.log_episode(episode_reward)
 
+        if episode % print_every == 0:
+            print(f"Episode {episode} | Reward {episode_reward}")
+           
 
+    env.close()
 
 
 

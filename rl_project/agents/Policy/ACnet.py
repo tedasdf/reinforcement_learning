@@ -110,6 +110,7 @@ class ActorCriticNetwork(nn.Module):
 class ActorCriticNetworkKai(AbstractAgent):
     def __init__(self, in_channels):
         self.backbone = CNNBackbone(in_channels=in_channels)  # frame stack = 4
+
         self.actor = ActorNetwork(self.backbone.output_dim , hidden_dim , action_dim)
         self.critic = CriticNetwork(self.backbone.output_dim , hidden_dim)
 
@@ -126,7 +127,8 @@ class ActorCriticNetworkKai(AbstractAgent):
         dist = torch.distributions.Categorical(logits=logits)
         action = dist.sample()
         return action , logits ,value
-
+    
+    def boostrap(self):
 if __name__ == "__main__":
 
     import torch.optim as optim
