@@ -3,7 +3,7 @@ import torch, os
 from rl_project_new.algorithms.ACnet import ActorCriticNetwork
 
 
-class PolicyRLAgent():
+class ACnetRLAgent():
     def __init__(self, network, gamma, device):
         self.network = network
         self.device = device
@@ -17,9 +17,9 @@ class PolicyRLAgent():
         action = dist.sample()
         return action, value, dist
     
-    def store_transition(self, value, reward, action, dist):
+    def store_transition(self, transition_tuple):
         # Agent stores this transition in its local memory
-        self.memory.append((value, reward, action, dist))
+        self.memory.append(transition_tuple)
 
         
     def process_rollout(self, rollout_buffer, next_state, done):

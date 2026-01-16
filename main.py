@@ -9,23 +9,32 @@ from hydra.utils import instantiate
 
 from wandb_logger import WandBLogger
 
-def env_prep():
-    #### env prep
-    # For vectorized envs
-    env = gym.vector.SyncVectorEnv([make_wrapped_env for _ in range(4)])
-    return env
 
-def make_wrapped_env(cfg):
+
+def setup_training_env(cfg):
+    """Programmatically choose between Sync and Single env based on config."""
     gym.register_envs(ale_py)
-    env = gym.make(cfg.env.id, render_mode=cfg.env.render_mode)  # render_mode="human" shows the game
-    env = GrayscaleObservation(env, keep_dim=False) # Result: (210, 160)
-    env = ResizeObservation(env, (84, 84))          # Result: (84, 84)
-    env = FrameStackObservation(env, stack_size=cfg.env.frame_stack)
-    
-    state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.n
+    # A function to create one instance of the game
+    def make_single_env():
+        env = gym.make(cfg.env.id, render_mode=cfg.env.render_mode)  # render_mode="human" shows the game
+        env = GrayscaleObservation(env, keep_dim=False) # Result: (210, 160)
+        env = ResizeObservation(env, (84, 84))          # Result: (84, 84)
+        env = FrameStackObservation(env, stack_size=cfg.env.frame_stack)
+        return env
 
-    return env, action_dim, state_dim
+    if cfg.training.num_envs > 1:
+        print(f"--- INITIALIZING SYNCHRONOUS MODE: {cfg.training.num_envs} ENVS ---")
+        # Creates multiple environments running in parallel
+        env = gym.vector.SyncVectorEnv([lambda: make_single_env() for _ in range(cfg.training.num_envs)])
+        state_dim = env.single_observation_space.shape[0]
+        action_dim = env.single_action_space.n
+    else:
+        print("--- INITIALIZING SINGLE-INSTANCE MODE ---")
+        env = make_single_env()
+        state_dim = env.observation_space.shape[0]
+        action_dim = env.action_space.n
+        
+    return env, action_dim, state_dim, cfg.training.num_envs
 
 def set_up_agent(cfg, env):
     return instantiate(
@@ -47,22 +56,15 @@ if __name__ == "__main__":
         device = torch.device("cpu")
     print(f"Using device: {device}")
 
-    env, action_dim, state_dim = make_wrapped_env(cfg)
+    env, action_dim, state_dim, num_envs = setup_training_env(cfg)
  
     print(f"Environment ID: {cfg.env.id} Action Dimension: {action_dim} State Dimension: {state_dim}")
 
     #### agent prep
-    ac_net = instantiate(
-        cfg.model, 
-        in_channels=cfg.env.frame_stack, 
-        action_dim=env.action_space.n,
-    ).to(device)
-
-    # Wrap ACnet in your Manager class
-    agent = PolicyRLAgent(network=ac_net, gamma=cfg.training.gamma , device=device )   
+    agent = instantiate(cfg.agent)  
 
     #### the loop
-    optimizer = torch.optim.Adam(ac_net.parameters(), lr=cfg.training.learning_rate)
+    optimizer = torch.optim.Adam(agent.network.parameters(), lr=cfg.training.learning_rate)
 
     max_episodes = cfg.training.max_episodes
     n_steps = cfg.training.n_steps
@@ -86,10 +88,21 @@ if __name__ == "__main__":
 
                 ### agent preprocess
                 action, value, dist = agent.get_action(state_tensor)
-                
+                if num_envs > 1:
+                    # action is already a batch [num_envs]
+                    next_state, reward, term, trunc, info = env.step(action.cpu().numpy())
+                    # For Synch env, reward/done are arrays
+                    done_tensor = torch.as_tensor(term | trunc).to(device)
+                    reward_tensor = torch.as_tensor(reward).to(device)
+                else:
+                    # action is a single item
+                    next_state, reward, term, trunc, info = env.step(action.item())
+                    done_tensor = torch.tensor([term or trunc]).to(device)
+                    reward_tensor = torch.tensor([reward]).to(device)
+                    
                 next_state, reward, term, trunc, _ = env.step(action.item())
                 # Agent stores this transition in its local memory
-                agent.store_transition(value, reward, action, dist)
+                agent.store_transition((value, reward, action, dist))
                 
                 if episode % cfg.training.print_every == 0:
                     # Use the 'original' rgb frame from info if available, or current state

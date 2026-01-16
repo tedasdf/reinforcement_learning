@@ -1,5 +1,4 @@
 import torch.nn as nn
-from torch.distributions import Categorical
 from rl_project_new.algorithms.utils import CNNBackbone, ActorNetwork, CriticNetwork
 
 
@@ -20,6 +19,10 @@ class ActorCriticNetwork(nn.Module):
 
         return logits, value
     
+
+    def ac_loss(self):
+        raise NotImplementedError
+
     def a2c_loss(self, value, target, action, dist):
         log_prob = dist.log_prob(action)
         advantage = target - value

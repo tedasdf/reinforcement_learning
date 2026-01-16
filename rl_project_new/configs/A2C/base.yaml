@@ -9,6 +9,7 @@ env:
 
 # Training Hyperparameters
 training:
+  num_envs: 4 ## should be the same as num_envs
   gamma: 0.99
   learning_rate: 0.0001
   n_steps: 5
