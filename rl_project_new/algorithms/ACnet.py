@@ -20,16 +20,17 @@ class ActorCriticNetwork(nn.Module):
         return logits, value
     
 
-    def ac_loss(self):
-        raise NotImplementedError
-
-    def a2c_loss(self, value, target, action, dist):
-        log_prob = dist.log_prob(action)
+    def a2c_loss(self, value, target, log_prob):
         advantage = target - value
         
         actor_loss = -(log_prob * advantage.detach())
         critic_loss = advantage.pow(2)
-        entropy = dist.entropy()
+
         
         # One scalar loss for this specific transition
-        return actor_loss + 0.5 * critic_loss - 0.01 * entropy
+        return actor_loss, critic_loss
+    
+    def gae_loss(self, advantage, log_prob, value):
+        actor_loss = -(log_prob * advantage.detach())  # advantage = GAE
+        critic_loss = (value - (value + advantage)).pow(2)  
+        return actor_loss, critic_loss
