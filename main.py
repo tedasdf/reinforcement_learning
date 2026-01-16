@@ -66,6 +66,8 @@ if __name__ == "__main__":
         "action_dim": action_dim
         }
     )
+    agent.network = agent.network.to(device)   # <-- probably missing
+
     #### the loop
     optimizer = torch.optim.Adam(agent.network.parameters(), lr=cfg.training.learning_rate)
 

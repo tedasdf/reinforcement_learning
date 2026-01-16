@@ -9,6 +9,7 @@ class ACnetRLAgent():
         self.device = device
         self.gamma = gamma
         self.memory = []
+        self.network = self.network.to(self.device)
         
     def get_action(self, state_tensor):
         # Forward pass through the ACnet
