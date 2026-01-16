@@ -25,11 +25,16 @@ class A2CnetRLAgent(ACnetRLAgent): # Inherits from the base class you defined
     def process_rollout(self, next_state):
         with torch.no_grad():
             _, next_value = self.network(next_state)
-            R = next_value.squeeze(-1)
+            R = next_value.squeeze(-1)  # shape [num_envs]
 
         targets = []
-        for value, reward, log_prob, entropy, done in reversed(self.memory):
-            R = reward + self.gamma * R * (1.0 - done.float())
+        for _, reward, _, _, done in reversed(self.memory):
+            # Convert to tensor on the same device as R
+            reward_tensor = torch.as_tensor(reward, dtype=torch.float32, device=R.device)
+            done_tensor   = torch.as_tensor(done, dtype=torch.float32, device=R.device)
+            
+            # TD target with done masking
+            R = reward_tensor + self.gamma * R * (1.0 - done_tensor)
             targets.append(R)
 
         targets.reverse()
@@ -45,7 +50,7 @@ class A2CnetRLAgent(ACnetRLAgent): # Inherits from the base class you defined
         total_entropy = 0
 
         # Zip memory and targets to calculate step-by-step losses
-        for (value, reward, log_prob, entropy, done), target in zip(self.memory, targets):
+        for (value, _, log_prob, entropy, _), target in zip(self.memory, targets):
             # value: predicted, target: actual reward-sum
             actor_loss, critic_loss = self.network.a2c_loss(
                 value, target, log_prob
