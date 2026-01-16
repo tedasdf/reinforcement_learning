@@ -1,0 +1,21 @@
+name: Auto Update Code
+
+on:
+  push:
+    branches:
+      - main  
+
+jobs:
+  update:
+    runs-on: [self-hosted, x64, linux, docker]
+    steps:
+      - name: Pull latest code safely
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          cd /home/fypits25/Documents/ted_backyard/reinforcement_learning
+
+          git remote set-url origin https://$GITHUB_TOKEN@github.com/${{ github.repository }}.git
+          
+          git fetch origin
+          git reset --hard origin/main
