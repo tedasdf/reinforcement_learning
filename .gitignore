@@ -7,3 +7,5 @@
 /env/PufferLib
 
 /wandb
+
+/__pycache__
