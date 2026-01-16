@@ -73,68 +73,86 @@ if __name__ == "__main__":
     n_steps = cfg.training.n_steps
     print_every = cfg.training.print_every
 
-    # logger = WandBLogger(
-    #     project_name="Pacman-RL", 
-    #     run_name="A2C-NStep-Run", 
-    #     config=OmegaConf.to_container(cfg)
-    # )
+    logger = WandBLogger(
+        project_name="Pacman-RL", 
+        run_name="A2C-NStep-Run", 
+        config=OmegaConf.to_container(cfg)
+    )
     
     for episode in range(max_episodes):
         state, _ = env.reset()
-        episode_reward = 0
-        done = False
+        if num_envs == 1:
+            state = np.expand_dims(state, 0)
 
-        while not done :
+        episode_reward = np.zeros(num_envs, dtype=np.float32)
+        done = np.zeros(num_envs, dtype=np.bool_)
+
+        while not done.all():
             for _ in range(n_steps):
-                state_tensor = torch.as_tensor(state).float().to(device) / 255.0
-                if state_tensor.ndim == 3: state_tensor = state_tensor.unsqueeze(0)
+
+                state_tensor = torch.as_tensor(state, dtype=torch.float32, device=device) / 255.0
+                if state_tensor.ndim == 3:
+                    state_tensor = state_tensor.unsqueeze(0)
 
                 ### agent preprocess
-                action, value, dist = agent.get_action(state_tensor)
-                if num_envs > 1:
-                    # action is already a batch [num_envs]
-                    next_state, reward, term, trunc, info = env.step(action.cpu().numpy())
-                    # For Synch env, reward/done are arrays
-                    done_tensor = torch.as_tensor(term | trunc).to(device)
-                    reward_tensor = torch.as_tensor(reward).to(device)
-                else:
-                    # action is a single item
+                action, value, log_prob, entropy = agent.get_action(state_tensor)
+               
+                if num_envs == 1:
                     next_state, reward, term, trunc, info = env.step(action.item())
-                    done_tensor = torch.tensor([term or trunc]).to(device)
-                    reward_tensor = torch.tensor([reward]).to(device)
+                    reward = np.array([reward], dtype=np.float32)
+                    term   = np.array([term], dtype=np.bool_)
+                    trunc  = np.array([trunc], dtype=np.bool_)
+                    next_state = np.expand_dims(next_state, 0)
+                else:
+                    next_state, reward, term, trunc, info = env.step(action.cpu().numpy())
+                    reward = reward.astype(np.float32)
+                    term   = term.astype(np.bool_)
+                    trunc  = trunc.astype(np.bool_)
+
+                done = np.logical_or(term, trunc)   # shape: [num_envs]
+
                     
                 # Agent stores this transition in its local memory
-                agent.store_transition((value, reward, action, dist))
-                
+                agent.store_transition((value, reward, log_prob, entropy, done))
+
                 # if episode % cfg.training.print_every == 0:
                     # Use the 'original' rgb frame from info if available, or current state
                     # logger.store_frame(env.render())
                     
-                episode_reward += reward
+                episode_reward += reward.mean()
                 state = next_state
-                done = term or trunc
-                if done: break
-            
-            ### agent memory 
-            state_tensor = torch.as_tensor(state).float().to(device) / 255.0
-            if state_tensor.ndim == 3: state_tensor = state_tensor.unsqueeze(0)
+                # For single env, break if done
+                if num_envs == 1 and done[0]:
+                    break
 
-            loss = agent.compute_n_step_loss(state_tensor, done)
+                # For multi-env, optionally reset finished envs individually
+                if num_envs > 1:
+                    for i, d in enumerate(done):
+                        if d:
+                            state[i], _ = env.envs[i].reset()
+                            episode_reward[i] = 0 
+                
+            # Convert last state to tensor for bootstrap
+            state_tensor = torch.as_tensor(state, dtype=torch.float32, device=device) / 255.0
+            if state_tensor.ndim == 3:
+                state_tensor = state_tensor.unsqueeze(0)
+
+            # Compute loss from n-step rollout
+            loss = agent.compute_n_step_loss(state_tensor)
+
             
             optimizer.zero_grad()
             loss.backward()
             grad_norm = torch.nn.utils.clip_grad_norm_(agent.network.parameters(), 0.5)
             optimizer.step()
 
-            agent.memory_clear()
-
-            # logger.log_step(
-            #     reward=reward, 
-            #     loss=loss.item(), 
-            #     extra_info={"grad_norm": grad_norm.item()}
-            # )
+            logger.log_step(
+                reward=reward, 
+                loss=loss.item(), 
+                extra_info={"grad_norm": grad_norm.item()}
+            )
         
-        # logger.log_episode(episode_reward)
+        logger.log_episode(episode_reward)
 
         if episode % print_every == 0:
             print(f"Episode {episode} | Reward {episode_reward}")

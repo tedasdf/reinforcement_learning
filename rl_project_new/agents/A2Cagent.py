@@ -17,38 +17,38 @@ class A2CnetRLAgent(ACnetRLAgent): # Inherits from the base class you defined
 
         dist = torch.distributions.Categorical(logits=logits)
         action = dist.sample()
-        
+        log_prob = dist.log_prob(action)
+        entropy = dist.entropy().mean()
         # Squeezing ensures value is a 1D tensor [batch_size]
-        return action, value.squeeze(-1), dist
+        return action, value.squeeze(-1), log_prob, entropy
     
-    def process_rollout(self, next_state, done):
-        # Logic for calculating the N-step targets
+    def process_rollout(self, next_state):
         with torch.no_grad():
             _, next_value = self.network(next_state)
-            # R is our bootstrap starting point
-            R = next_value.squeeze() * (1 - done.float())
+            R = next_value.squeeze(-1)
 
         targets = []
-        for _, reward, _, _ in reversed(self.memory):
-            R = reward + self.gamma * R
-            targets.append(R.detach()) # Truths should not track gradients
-        
+        for value, reward, log_prob, entropy, done in reversed(self.memory):
+            R = reward + self.gamma * R * (1.0 - done.float())
+            targets.append(R)
+
         targets.reverse()
         return targets
+
         
-    def compute_n_step_loss(self, next_state, done):
+    def compute_n_step_loss(self, next_state):
         # Calculate targets using the function above
-        targets = self.process_rollout(next_state, done)
+        targets = self.process_rollout(next_state)
         
         total_policy_loss = 0
         total_value_loss = 0
         total_entropy = 0
 
         # Zip memory and targets to calculate step-by-step losses
-        for (value, _, action, dist), target in zip(self.memory, targets):
+        for (value, reward, log_prob, entropy, done), target in zip(self.memory, targets):
             # value: predicted, target: actual reward-sum
-            actor_loss, critic_loss, entropy = self.network.a2c_loss(
-                value, target, action, dist
+            actor_loss, critic_loss = self.network.a2c_loss(
+                value, target, log_prob
             )
             
             total_policy_loss += actor_loss

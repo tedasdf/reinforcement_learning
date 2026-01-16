@@ -49,14 +49,11 @@ class AdvantgeActorCriticNetwork(nn.Module):
         value = self.critic(features)
         return logits, value
 
-    def a2c_loss(self, value, target, action, dist):
-        log_prob = dist.log_prob(action)
+    def a2c_loss(self, value, target, log_prob):
         advantage = target - value
         
         actor_loss = -(log_prob * advantage.detach()).mean()
         critic_loss = advantage.pow(2).mean()
-        entropy = dist.entropy().mean()
-        
-        # One scalar loss for this specific transition
-        return actor_loss, critic_loss, entropy
+    
+        return actor_loss, critic_loss
     
