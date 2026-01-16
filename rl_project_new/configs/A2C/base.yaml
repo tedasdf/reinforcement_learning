@@ -9,7 +9,7 @@ env:
 
 # Training Hyperparameters
 training:
-  num_envs: 4 ## should be the same as num_envs
+  num_envs: 4 ## should be the same as actor_num
   gamma: 0.99
   learning_rate: 0.0001
   n_steps: 5
@@ -19,10 +19,11 @@ training:
 
 
 agent:
-  _target_: "rl_project_new.agents.ACnetRLAgent"
+  _target_: "rl_project_new.agents.A2Cagent.A2CnetRLAgent"
   gamma: 0.99
   device: "cuda"
   # You can even nest the model inside!
   network:
-    _target_: "rl_project_new.algorithms.ACnet.ActorCriticNetwork"
+    _target_: "rl_project_new.algorithms.A2C.AdvantgeActorCriticNetwork"
     hidden_dim: 256
+    actor_num: 4 

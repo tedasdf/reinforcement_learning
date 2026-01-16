@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from rl_project_new.algorithms.utils import CNNBackbone, ActorNetwork, CriticNetwork
 
@@ -41,8 +42,9 @@ class AdvantgeActorCriticNetwork(nn.Module):
         if actor_idx is not None:
             logits = self.actors[actor_idx](features)
         else:
-            logits = [self.actors(features) for actor in self.actors]
+            logits = [actor(features) for actor in self.actors]
 
+            logits = torch.stack(logits, dim=0)
 
         value = self.critic(features)
         return logits, value

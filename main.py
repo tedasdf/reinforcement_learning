@@ -1,7 +1,5 @@
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
 import gymnasium as gym
-from rl_project_new.agents.base import PolicyRLAgent
-from rl_project_new.algorithms.ACnet import ActorCriticNetwork
 import ale_py, torch
 import numpy as np
 from omegaconf import OmegaConf
@@ -47,7 +45,7 @@ def set_up_agent(cfg, env):
 
 if __name__ == "__main__":
 
-    cfg = OmegaConf.load("rl_project_new/configs/ACnet/base.yaml")
+    cfg = OmegaConf.load("rl_project_new/configs/A2C/base.yaml")
     
     ## device
     if cfg.training.device == "cuda" and torch.cuda.is_available():
@@ -61,8 +59,13 @@ if __name__ == "__main__":
     print(f"Environment ID: {cfg.env.id} Action Dimension: {action_dim} State Dimension: {state_dim}")
 
     #### agent prep
-    agent = instantiate(cfg.agent)  
-
+    agent = instantiate(
+        cfg.agent,
+        network={
+        "in_channels": state_dim,
+        "action_dim": action_dim
+        }
+    )
     #### the loop
     optimizer = torch.optim.Adam(agent.network.parameters(), lr=cfg.training.learning_rate)
 
@@ -70,11 +73,11 @@ if __name__ == "__main__":
     n_steps = cfg.training.n_steps
     print_every = cfg.training.print_every
 
-    logger = WandBLogger(
-        project_name="Pacman-RL", 
-        run_name="A2C-NStep-Run", 
-        config=OmegaConf.to_container(cfg)
-    )
+    # logger = WandBLogger(
+    #     project_name="Pacman-RL", 
+    #     run_name="A2C-NStep-Run", 
+    #     config=OmegaConf.to_container(cfg)
+    # )
     
     for episode in range(max_episodes):
         state, _ = env.reset()
@@ -100,13 +103,12 @@ if __name__ == "__main__":
                     done_tensor = torch.tensor([term or trunc]).to(device)
                     reward_tensor = torch.tensor([reward]).to(device)
                     
-                next_state, reward, term, trunc, _ = env.step(action.item())
                 # Agent stores this transition in its local memory
                 agent.store_transition((value, reward, action, dist))
                 
-                if episode % cfg.training.print_every == 0:
+                # if episode % cfg.training.print_every == 0:
                     # Use the 'original' rgb frame from info if available, or current state
-                    logger.store_frame(env.render())
+                    # logger.store_frame(env.render())
                     
                 episode_reward += reward
                 state = next_state
@@ -126,13 +128,13 @@ if __name__ == "__main__":
 
             agent.memory_clear()
 
-            logger.log_step(
-                reward=reward, 
-                loss=loss.item(), 
-                extra_info={"grad_norm": grad_norm.item()}
-            )
+            # logger.log_step(
+            #     reward=reward, 
+            #     loss=loss.item(), 
+            #     extra_info={"grad_norm": grad_norm.item()}
+            # )
         
-        logger.log_episode(episode_reward)
+        # logger.log_episode(episode_reward)
 
         if episode % print_every == 0:
             print(f"Episode {episode} | Reward {episode_reward}")

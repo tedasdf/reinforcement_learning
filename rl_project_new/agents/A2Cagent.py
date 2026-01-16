@@ -2,7 +2,7 @@ import torch
 from rl_project_new.agents.base import ACnetRLAgent        
 
 
-class ACnetRLAgent(ACnetRLAgent): # Inherits from the base class you defined
+class A2CnetRLAgent(ACnetRLAgent): # Inherits from the base class you defined
     def __init__(self, network, gamma, device):
         # We call the parent's __init__ to set up memory, gamma, and device
         super().__init__(network, gamma, device)
@@ -10,6 +10,11 @@ class ACnetRLAgent(ACnetRLAgent): # Inherits from the base class you defined
     def get_action(self, state_tensor):
         # We override this to add the squeeze(-1) on the value
         logits, value = self.network(state_tensor)
+        
+        if logits.ndim == 3:
+            # Example: taking the specific actor for the specific batch index
+            logits = torch.diagonal(logits, dim1=0, dim2=1).permute(1, 0)
+
         dist = torch.distributions.Categorical(logits=logits)
         action = dist.sample()
         
