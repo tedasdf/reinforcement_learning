@@ -97,7 +97,7 @@ if __name__ == "__main__":
                     state_tensor = state_tensor.unsqueeze(0)
 
                 ### agent preprocess
-                action, value, log_prob, entropy = agent.get_action(state_tensor)
+                action, extra = agent.get_action(state_tensor)
                
                 if num_envs == 1:
                     next_state, reward, term, trunc, info = env.step(action.item())
@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
                     
                 # Agent stores this transition in its local memory
-                agent.store_transition((value, reward, log_prob, entropy, done))
+                agent.store_transition(state, action, reward, next_state, done, extra)
 
                 # if episode % cfg.training.print_every == 0:
                     # Use the 'original' rgb frame from info if available, or current state

@@ -19,18 +19,8 @@ class ActorCriticNetwork(nn.Module):
 
         return logits, value
     
-
-    def a2c_loss(self, value, target, log_prob):
-        advantage = target - value
-        
-        actor_loss = -(log_prob * advantage.detach())
-        critic_loss = advantage.pow(2)
-
-        
-        # One scalar loss for this specific transition
-        return actor_loss, critic_loss
     
-    def gae_loss(self, advantage, log_prob, value):
+    def loss(self, advantage, log_prob, value):
         actor_loss = -(log_prob * advantage.detach())  # advantage = GAE
-        critic_loss = (value - (value + advantage)).pow(2)  
+        critic_loss = (value - (value + advantage)).pow(2).mean()
         return actor_loss, critic_loss

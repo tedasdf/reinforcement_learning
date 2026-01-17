@@ -1,5 +1,5 @@
 import torch
-from rl_project_new.agents.base import ACnetRLAgent        
+from rl_project_new.agents.ACagent import ACnetRLAgent        
 
 
 class A2CnetRLAgent(ACnetRLAgent): # Inherits from the base class you defined
@@ -22,7 +22,7 @@ class A2CnetRLAgent(ACnetRLAgent): # Inherits from the base class you defined
         # Squeezing ensures value is a 1D tensor [batch_size]
         return action, value.squeeze(-1), log_prob, entropy
     
-    def process_rollout(self, next_state):
+    def process_memory(self, next_state):
         with torch.no_grad():
             _, next_value = self.network(next_state)
             R = next_value.squeeze(-1)  # shape [num_envs]
@@ -38,12 +38,12 @@ class A2CnetRLAgent(ACnetRLAgent): # Inherits from the base class you defined
             targets.append(R)
 
         targets.reverse()
-        return targets
+        return torch.stack(targets) 
 
         
     def compute_n_step_loss(self, next_state):
         # Calculate targets using the function above
-        targets = self.process_rollout(next_state)
+        targets = self.process_memory(next_state)
         
         total_policy_loss = 0
         total_value_loss = 0
