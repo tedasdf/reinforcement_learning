@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 class BaseAgent(ABC):
     def __init__(self, device, network):
         self.device = device
-        self.network = network
+        self.network = network.to(device)   # <-- probably missing
         self.memory = []
 
     @abstractmethod

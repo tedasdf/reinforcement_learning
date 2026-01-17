@@ -1,0 +1,33 @@
+# configs/pacman_config.yaml
+
+# Environment settings
+env:
+  id: "LunarLanderContinuous-v3"
+  render_mode: "rgb_array"
+  frame_stack: 3
+  screen_size: 84
+
+# Training Hyperparameters
+training:
+  gamma: 0.99
+  num_envs: 1
+  learning_rate: 0.0001
+  n_steps: 5
+  max_episodes: 500
+  print_every: 10
+  device: "cuda" # PyTorch uses 'cuda' for GPU
+
+
+agent:
+  _target_: "rl_project_new.agents.DDPGagent.DDPGnetRLAgent"
+  gamma: 0.99
+  device: "cuda"
+  # You can even nest the model inside!
+  network:
+    _target_: "rl_project_new.algorithms.DDPG.DeepDetNetwork"
+    hidden_dim: [256, 400, 300]
+    sigma: 0.2
+  replay_buffer:
+    _target_: "rl_project_new.buffer.replay_buffer.ReplayBuffer"
+    capacity: 100000
+    batch_size: 128

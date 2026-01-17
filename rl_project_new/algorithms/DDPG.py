@@ -31,24 +31,29 @@ class CriticNetwork(nn.Module):
     
 
 class DeepDetNetwork(nn.Module):
-    def __init__(self, in_channels, hidden_dim, sigma):
-        self.backbone = CNNBackbone(in_channels=in_channels)
+    def __init__(self, in_channels, hidden_dim, action_dim, sigma):
+        super().__init__()
+        print(hidden_dim)
+        # self.backbone = CNNBackbone(in_channels=in_channels)
 
-        self.actor = ActorNetwork(self.backbone.output_dim , hidden_dim , 1)
-        self.critic = CriticNetwork(self.backbone.output_dim , hidden_dim)
+        self.actor = ActorNetwork(in_channels , hidden_dim[0], action_dim)
+        self.critic = CriticNetwork(in_channels , action_dim, hidden_dim[1], hidden_dim[2])
 
         self.sigma = sigma
         self.mean = 0
         self.theta = 0.15
         
 
-    def forward(self, state):
+    def forward(self, state, use_noise=True):
         features = self.backbone(state)
         action = self.actor(features)
-        action += action + self.theta * (self.mean - action) + self.sigma * torch.randn_like(action)
+        
+        if use_noise:
+            action = action + self.theta * (self.mean - action) + self.sigma * torch.randn_like(action)
+        
         value = self.critic(features)
-
         return action, value
+
     
     def loss(self, current_qs , target_qs ):
         return F.mse_loss(current_qs, target_qs, reduction='mean')

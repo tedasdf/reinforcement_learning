@@ -1,58 +1,63 @@
-# import gym
-# import pufferlib.emulation
+from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
+import gymnasium as gym
+import ale_py
+import cv2
+# | Environment                | Action space                            | Observation                                   |
+# | -------------------------- | --------------------------------------- | --------------------------------------------- |
+# | `Pendulum-v1`              | Continuous, 1D torque (-2 to 2)         | 3D state (cos(theta), sin(theta), velocity)   |
+# | `MountainCarContinuous-v0` | Continuous, 1D acceleration (-1 to 1)   | 2D position + velocity                        |
+# | `CartPoleContinuous-v1`    | Continuous, 1D force (-1 to 1)          | 4D state (cart pos, vel, pole angle, ang vel) |
+# | `LunarLanderContinuous-v2` | Continuous, 2D thrust                   | 8D state                                      |
+# | `CarRacing-v2`             | Continuous, 3D [steering, accel, brake] | 96x96x3 RGB                                   |
+import numpy as np
+
+import gymnasium as gym
+from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
+
+def make_env(env_id, frame_stack=4, render_mode=None):
+    gym.register_envs(ale_py)
+    env = gym.make(env_id, render_mode=render_mode)
+
+    obs_shape = env.observation_space.shape
+
+    # Image-based envs: (H, W, C)
+    if obs_shape is not None and len(obs_shape) == 3:
+        env = GrayscaleObservation(env, keep_dim=True)
+        env = ResizeObservation(env, (84, 84))
+        env = FrameStackObservation(env, stack_size=frame_stack)
+
+    return env
+
+# Create the environment
+env = make_env('LunarLanderContinuous-v3', render_mode='human')  # or 'rgb_array' if headless
 
 
-# if __name__ == '__main__':
-#     import gymnasium as gym
-#     import ale_py, os, wandb
-    
-    
-#     os.environ['WANDB_API_KEY'] = '792864dae52b3846d1b891481c3ebb7abfe35dd9'
-    
-#     # Start a new wandb run to track this script.
-#     run = wandb.init(
-#         # Set the wandb entity where your project will be logged (generally your team name).
-#         entity="my-awesome-team-name",
-#         # Set the wandb project where this run will be logged.
-#         project="my-awesome-project",
-#         # Track hyperparameters and run metadata.
-#         config={
-#             "learning_rate": 0.02,
-#             "architecture": "CNN",
-#             "dataset": "CIFAR-100",
-#             "epochs": 10,
-#         },
-#     )
-    
-    
-#     gym.register_envs(ale_py)  # unnecessary but helpful for IDEs
+# Play for a few episodes
+num_episodes = 2
+for ep in range(num_episodes):
+    obs, info = env.reset()
+    done = False
+    total_reward = 0
+    step = 0
 
-#     env = gym.make('ALE/Breakout-v5', render_mode="rgb_array") 
-#     gymnasium_env = pufferlib.GymToGymnasium(env)
-#     puffer_env = pufferlib.emulation.GymnasiumPufferEnv(gymnasium_env)
-#     observations, info = puffer_env.reset()
-#     action = puffer_env.action_space.sample()
-#     observation, reward, terminal, truncation, info = puffer_env.step(action)
-#     print(observation.shape)
+    while not done:
+        # Random continuous action: [steering, acceleration, brake]
+        action = env.action_space.sample()
+        obs, reward, terminated, truncated, info = env.step(action)
+        print(obs)
+        done = terminated or truncated
 
-from dataclasses import dataclass
-from omegaconf import DictConfig, OmegaConf
-from hydra.utils import instantiate
+        total_reward += reward
+        step += 1
 
-from rl_project.agents.Policy.ACnet import ActorCriticNetwork
+        # Optional: show the processed observation (stacked grayscale frames)
+        # For visualization, convert to single image
+        # if isinstance(obs, np.ndarray):
+        #     cv2.imshow('Processed Obs', obs[:, :, -1])  # show last frame in stack
+        #     if cv2.waitKey(1) & 0xFF == ord('q'):
+        #         break
 
-cfg = OmegaConf.create(
-    {
-        "_target_": "rl_project.agents.Policy.ACnet.ActorCriticNetwork",
-        "in_channels": 4,
-        "hidden_dim": 256,
-        "action_dim": 7
-    }
-)
+    print(f"Episode {ep+1} finished in {step} steps, total reward: {total_reward}")
 
-obj_none = instantiate(cfg, _convert_="none")
-print(type(obj_none))
-assert isinstance(obj_none, ActorCriticNetwork)
-
-
-print(obj_none)
+env.close()
+cv2.destroyAllWindows()

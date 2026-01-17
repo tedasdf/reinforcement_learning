@@ -6,7 +6,7 @@ from omegaconf import OmegaConf
 from hydra.utils import instantiate
 
 from wandb_logger import WandBLogger
-
+from gymnasium import spaces
 
 
 def setup_training_env(cfg):
@@ -15,9 +15,13 @@ def setup_training_env(cfg):
     # A function to create one instance of the game
     def make_single_env():
         env = gym.make(cfg.env.id, render_mode=cfg.env.render_mode)  # render_mode="human" shows the game
-        env = GrayscaleObservation(env, keep_dim=False) # Result: (210, 160)
-        env = ResizeObservation(env, (84, 84))          # Result: (84, 84)
-        env = FrameStackObservation(env, stack_size=cfg.env.frame_stack)
+        obs_shape = env.observation_space.shape
+        # Image-based envs: (H, W, C)
+        if obs_shape is not None and len(obs_shape) == 3:
+            env = GrayscaleObservation(env, keep_dim=True)
+            env = ResizeObservation(env, (84, 84))
+            env = FrameStackObservation(env, stack_size=cfg.env.frame_stack)
+
         return env
 
     if cfg.training.num_envs > 1:
@@ -25,13 +29,17 @@ def setup_training_env(cfg):
         # Creates multiple environments running in parallel
         env = gym.vector.SyncVectorEnv([lambda: make_single_env() for _ in range(cfg.training.num_envs)])
         state_dim = env.single_observation_space.shape[0]
-        action_dim = env.single_action_space.n
+    
     else:
         print("--- INITIALIZING SINGLE-INSTANCE MODE ---")
         env = make_single_env()
         state_dim = env.observation_space.shape[0]
-        action_dim = env.action_space.n
-        
+    
+    action_space = env.action_space
+    if isinstance(action_space, spaces.Discrete):
+        action_dim = action_space.n
+    elif isinstance(action_space, spaces.Box):
+        action_dim = action_space.shape[0]
     return env, action_dim, state_dim, cfg.training.num_envs
 
 def set_up_agent(cfg, env):
@@ -45,7 +53,7 @@ def set_up_agent(cfg, env):
 
 if __name__ == "__main__":
 
-    cfg = OmegaConf.load("rl_project_new/configs/A2C/base.yaml")
+    cfg = OmegaConf.load("rl_project_new/configs/DDPG/base.yaml")
     
     ## device
     if cfg.training.device == "cuda" and torch.cuda.is_available():
@@ -58,6 +66,7 @@ if __name__ == "__main__":
  
     print(f"Environment ID: {cfg.env.id} Action Dimension: {action_dim} State Dimension: {state_dim}")
 
+
     #### agent prep
     agent = instantiate(
         cfg.agent,
@@ -66,7 +75,7 @@ if __name__ == "__main__":
         "action_dim": action_dim
         }
     )
-    agent.network = agent.network.to(device)   # <-- probably missing
+
 
     #### the loop
     optimizer = torch.optim.Adam(agent.network.parameters(), lr=cfg.training.learning_rate)
