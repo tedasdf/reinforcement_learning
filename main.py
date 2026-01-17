@@ -2,6 +2,7 @@ from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameSta
 import gymnasium as gym
 import ale_py, torch
 import numpy as np
+import argparse
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
 
@@ -51,6 +52,21 @@ def set_up_agent(cfg, env):
     )
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="RL Training Script")
+    parser.add_argument("--env", type=str, default="CartPole-v1")
+    parser.add_argument("--episodes", type=int, default=100)
+    parser.add_argument("--render_mode", type=str, default="rgb_array")
+
+    # Always define both learning rates
+    
+    parser.add_argument("--device", type=str, default="cpu")
+    
+    args, unknown = parser.parse_known_args()
+
+    it = iter(unknown)
+    extra_args = dict(zip(it, it))
+    return args, extra_args
 
 
 if __name__ == "__main__":
