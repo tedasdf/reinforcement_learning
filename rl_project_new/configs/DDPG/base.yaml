@@ -9,7 +9,6 @@ env:
 
 # Training Hyperparameters
 training:
-  gamma: 0.99
   num_envs: 1
   n_steps: 5
   max_episodes: 500
