@@ -2,11 +2,15 @@ import torch, os
 from rl_project_new.agents.base import BaseAgent
 
 class ACnetRLAgent(BaseAgent):
-    def __init__(self, network, gamma, device):
+    def __init__(self, network, gamma, lr, device):
         super().__init__(device, network)
         self.gamma = gamma
         self.lambda_ = 0.95
-        
+        self.lr = lr
+    
+    def setup_network(self):
+        return torch.optim.Adam(self.network.parameters(), lr=self.lr)
+    
     def get_action(self, state_tensor):
         # We override this to add the squeeze(-1) on the value
         logits, value = self.network(state_tensor)

@@ -51,6 +51,8 @@ def set_up_agent(cfg, env):
     )
 
 
+
+
 if __name__ == "__main__":
 
     cfg = OmegaConf.load("rl_project_new/configs/DDPG/base.yaml")
@@ -76,9 +78,8 @@ if __name__ == "__main__":
         }
     )
 
-
     #### the loop
-    optimizer = torch.optim.Adam(agent.network.parameters(), lr=cfg.training.learning_rate)
+    optimizer = agent.setup_network()
 
     max_episodes = cfg.training.max_episodes
     n_steps = cfg.training.n_steps
@@ -152,10 +153,28 @@ if __name__ == "__main__":
             loss = agent.compute_n_step_loss(state_tensor)
 
             
-            optimizer.zero_grad()
-            loss.backward()
-            grad_norm = torch.nn.utils.clip_grad_norm_(agent.network.parameters(), 0.5)
-            optimizer.step()
+
+            # Loop over optimizers if multiple, otherwise use default
+            if isinstance(agent.optimizers, dict):
+                # Multi-optimizer agent (e.g., DDPG)
+                if "critic" in agent.optimizers:
+                    agent.optimizers["critic"].zero_grad()
+                    loss["critic_loss"].backward()
+                    torch.nn.utils.clip_grad_norm_(agent.network.critic.parameters(), 0.5)
+                    agent.optimizers["critic"].step()
+
+                if "actor" in agent.optimizers:
+                    agent.optimizers["actor"].zero_grad()
+                    loss["actor_loss"].backward()
+                    torch.nn.utils.clip_grad_norm_(agent.network.actor.parameters(), 0.5)
+                    agent.optimizers["actor"].step()
+            else:
+                # Single-optimizer agent (e.g., A2C)
+                agent.optimizers.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(agent.network.parameters(), 0.5)
+                agent.optimizers.step()
+
 
             logger.log_step(
                 reward=reward, 

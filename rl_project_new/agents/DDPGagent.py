@@ -6,10 +6,19 @@ from rl_project_new.buffer.replay_buffer import ReplayBuffer
 
 
 class DDPGnetRLAgent(BaseAgent):
-    def __init__(self, replay_buffer: ReplayBuffer, network, gamma, device):
+    def __init__(self, replay_buffer: ReplayBuffer, network, gamma, critic_lr, actor_lr , device):
         super().__init__(device, network)
         self.replay_buffer = replay_buffer
         self.gamma = gamma
+        self.actor_lr = actor_lr
+        self.critic_lr = critic_lr
+
+    def setup_network(self):
+
+        return {
+            'actor':    torch.optim.Adam(self.network.parameters(), lr=self.actor_lr),
+            'critic':   torch.optim.Adam(self.network.parameters(), lr=self.critic_lr),
+        }
 
     
     def get_action(self, state_tensor):

@@ -9,6 +9,10 @@ class BaseAgent(ABC):
         self.memory = []
 
     @abstractmethod
+    def setup_network(self):
+        raise NotImplementedError
+    
+    @abstractmethod
     def get_action(self, state_tensor):
         """Return action and any extra info needed for memory"""
         raise NotImplementedError

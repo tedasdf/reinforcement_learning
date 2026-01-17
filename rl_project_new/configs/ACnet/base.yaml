@@ -21,6 +21,7 @@ agent:
   _target_: "rl_project_new.agents.ACnetRLAgent"
   gamma: 0.99
   device: "cuda"
+  lr: 0.0001
   # You can even nest the model inside!
   network:
     _target_: "rl_project_new.algorithms.ACnet.ActorCriticNetwork"
