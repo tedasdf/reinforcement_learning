@@ -52,5 +52,10 @@ class DDPGnetRLAgent(BaseAgent):
         current_q_values = self.network.critic(states_tensor, actions_tensor)
 
         critic_loss = self.network.loss(current_q_values, target_q_values)
-        return critic_loss
-        
+
+        value_tensors, _ = self.network(states_tensor)
+        actor_loss = -value_tensors.mean()
+        return {
+            'critic_loss': critic_loss,
+            'actor_loss': actor_loss
+        }
