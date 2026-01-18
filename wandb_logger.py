@@ -16,17 +16,25 @@ class WandBLogger:
         self.current_episode = 0
 
     def log_step(self, reward, loss=None, value=None, extra_info=None):
-        """
-        Log data at every step.
-        """
         log_dict = {"reward": reward}
+
         if loss is not None:
-            log_dict["loss"] = loss
+            if isinstance(loss, dict):
+                # Multi-loss agents (DDPG, TD3)
+                for k, v in loss.items():
+                    log_dict[k] = v.item() if torch.is_tensor(v) else v
+            else:
+                # Single-loss agents (A2C, PPO)
+                log_dict["loss"] = loss.item() if torch.is_tensor(loss) else loss
+
         if value is not None:
-            log_dict["value"] = value
+            log_dict["value"] = value.item() if torch.is_tensor(value) else value
+
         if extra_info:
             log_dict.update(extra_info)
+
         wandb.log(log_dict)
+
 
     def store_frame(self, frame):
         """

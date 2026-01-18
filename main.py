@@ -191,20 +191,23 @@ if __name__ == "__main__":
                     loss["actor_loss"].backward()
                     torch.nn.utils.clip_grad_norm_(agent.network.actor.parameters(), 0.5)
                     optimizers["actor"].step()
+                
             else:
                 # Single-optimizer agent (e.g., A2C)
                 optimizers.zero_grad()
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(agent.network.parameters(), 0.5)
+                grad_norm = torch.nn.utils.clip_grad_norm_(agent.network.parameters(), 0.5)
                 optimizers.step()
-
-
+            
             logger.log_step(
                 reward=reward, 
-                loss=loss.item(), 
+                loss=loss, 
                 extra_info={"grad_norm": grad_norm.item()}
             )
-        
+            
+
+
+            
         logger.log_episode(episode_reward)
 
         if episode % print_every == 0:
