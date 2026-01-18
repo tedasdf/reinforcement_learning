@@ -54,6 +54,7 @@ def set_up_agent(cfg, env):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RL Training Script")
+    parser.add_argument("--config_file", type=str, default="rl_project_new/configs/ACnet/base.yaml")
     parser.add_argument("--env", type=str, default="CartPole-v1")
     parser.add_argument("--episodes", type=int, default=100)
     parser.add_argument("--render_mode", type=str, default="rgb_array")
@@ -70,6 +71,9 @@ def parse_args():
 
 
 if __name__ == "__main__":
+
+    args, extra_args = parse_args()
+    raise ValueError
 
     cfg = OmegaConf.load("rl_project_new/configs/DDPG/base.yaml")
     
