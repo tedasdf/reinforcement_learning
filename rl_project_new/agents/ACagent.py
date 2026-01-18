@@ -134,21 +134,15 @@ class ACnetRLAgent(BaseAgent):
 
         self.memory_clear()
         return loss
+    
 
-    def save_checkpoint(self, episode, reward, path="checkpoints/"):
-        if not os.path.exists(path):
-            os.makedirs(path)
-        
-        file_path = os.path.join(path, f"pacman_ep_{episode}.pth")
-        torch.save({
-            'episode': episode,
-            'model_state_dict': self.network.state_dict(),
-            'reward': reward,
-        }, file_path)
-        print(f"Checkpoint saved: {file_path}")
+    def update_networks(self, loss, optimizers):
 
-    def load_checkpoint(self, file_path):
-        checkpoint = torch.load(file_path, map_location=self.device)
-        self.network.load_state_dict(checkpoint['model_state_dict'])
-        print(f"Loaded checkpoint from episode {checkpoint['episode']}")
-        return checkpoint['episode']
+        optimizers.zero_grad()
+        loss.backward()
+        grad_norm = torch.nn.utils.clip_grad_norm_(self.network.parameters(), 0.5)
+        optimizers.step()
+
+        self.soft_update()
+
+        return grad_norm

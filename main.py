@@ -175,30 +175,13 @@ if __name__ == "__main__":
             if loss is None:
                 continue
             
-            grad_norms = {}
+            grad_norms = agent.update_network(loss, optimizers)
 
-            if isinstance(optimizers, dict):
-                if "critic" in optimizers:
-                    optimizers["critic"].zero_grad()
-                    loss["critic_loss"].backward()
-                    grad_norms["critic_grad_norm"] = torch.nn.utils.clip_grad_norm_(
-                        agent.network.critic.parameters(), 0.5
-                    )
-                    optimizers["critic"].step()
-
-                if "actor" in optimizers:
-                    optimizers["actor"].zero_grad()
-                    loss["actor_loss"].backward()
-                    grad_norms["actor_grad_norm"] = torch.nn.utils.clip_grad_norm_(
-                        agent.network.actor.parameters(), 0.5
-                    )
-                    optimizers["actor"].step()
-
-                logger.log_step(
-                    reward=reward,
-                    loss=loss,
-                    extra_info={k: v.item() for k, v in grad_norms.items()}
-                )
+            logger.log_step(
+                reward=reward,
+                loss=loss,
+                extra_info={k: v.item() for k, v in grad_norms.items()}
+            )
 
             
 
@@ -211,3 +194,5 @@ if __name__ == "__main__":
            
 
     env.close()
+
+

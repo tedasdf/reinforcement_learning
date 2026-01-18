@@ -66,3 +66,22 @@ class DDPGnetRLAgent(BaseAgent):
             'critic_loss': critic_loss,
             'actor_loss': actor_loss
         }
+    
+    def update_networks(self, loss, optimizers):
+        grad_norms = {}
+        # Critic update
+        optimizers["critic"].zero_grad()
+        loss["critic_loss"].backward()
+        grad_norms["critic_grad_norm"] = torch.nn.utils.clip_grad_norm_(self.network.critic.parameters(), 0.5)
+        optimizers["critic"].step()
+
+        # Actor update
+        optimizers["actor"].zero_grad()
+        loss["actor_loss"].backward()
+        grad_norms["actor_grad_norm"] = torch.nn.utils.clip_grad_norm_(self.network.actor.parameters(), 0.5)
+        optimizers["actor"].step()
+
+        # Soft update
+        self.soft_update()
+
+        return 

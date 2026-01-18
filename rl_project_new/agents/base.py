@@ -31,9 +31,12 @@ class BaseAgent(ABC):
         raise NotImplementedError
     
     @abstractmethod
+    def update_networks(self, loss, optimizers):
+        raise NotImplementedError
+    
     def memory_clear(self):
         self.memory = [] 
-
+    
     def format_action(self, action_tensor):
         """
         Converts model output into an env-compatible action
