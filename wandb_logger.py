@@ -1,5 +1,6 @@
 import wandb
 import numpy as np
+import torch
 
 class WandBLogger:
     def __init__(self, project_name, run_name, config=None):

@@ -176,34 +176,31 @@ if __name__ == "__main__":
             if loss is None:
                 continue
             
+            grad_norms = {}
 
-            # Loop over optimizers if multiple, otherwise use default
             if isinstance(optimizers, dict):
-                # Multi-optimizer agent (e.g., DDPG)
                 if "critic" in optimizers:
                     optimizers["critic"].zero_grad()
                     loss["critic_loss"].backward()
-                    torch.nn.utils.clip_grad_norm_(agent.network.critic.parameters(), 0.5)
+                    grad_norms["critic_grad_norm"] = torch.nn.utils.clip_grad_norm_(
+                        agent.network.critic.parameters(), 0.5
+                    )
                     optimizers["critic"].step()
 
                 if "actor" in optimizers:
                     optimizers["actor"].zero_grad()
                     loss["actor_loss"].backward()
-                    torch.nn.utils.clip_grad_norm_(agent.network.actor.parameters(), 0.5)
+                    grad_norms["actor_grad_norm"] = torch.nn.utils.clip_grad_norm_(
+                        agent.network.actor.parameters(), 0.5
+                    )
                     optimizers["actor"].step()
-                
-            else:
-                # Single-optimizer agent (e.g., A2C)
-                optimizers.zero_grad()
-                loss.backward()
-                grad_norm = torch.nn.utils.clip_grad_norm_(agent.network.parameters(), 0.5)
-                optimizers.step()
-            
-            logger.log_step(
-                reward=reward, 
-                loss=loss, 
-                extra_info={"grad_norm": grad_norm.item()}
-            )
+
+                logger.log_step(
+                    reward=reward,
+                    loss=loss,
+                    extra_info={k: v.item() for k, v in grad_norms.items()}
+                )
+
             
 
 
