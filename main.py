@@ -73,7 +73,7 @@ def parse_args():
 if __name__ == "__main__":
 
     args, extra_args = parse_args()
-
+    raise ValueError
     cfg = OmegaConf.load("rl_project_new/configs/DDPG/base.yaml")
     
     ## device
