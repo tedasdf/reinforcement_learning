@@ -175,7 +175,7 @@ if __name__ == "__main__":
             if loss is None:
                 continue
             
-            grad_norms = agent.update_network(loss, optimizers)
+            grad_norms = agent.update_networks(loss, optimizers)
 
             logger.log_step(
                 reward=reward,
