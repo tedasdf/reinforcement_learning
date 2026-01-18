@@ -129,7 +129,8 @@ if __name__ == "__main__":
                 ### agent preprocess
                 action_tensor, extra = agent.get_action(state_tensor)
                 action = agent.format_action(action_tensor)
-
+                print("ACTION OUTPUT")
+                print(action)
                 if num_envs == 1:
                     next_state, reward, term, trunc, info = env.step(action)
                     reward = np.array([reward], dtype=np.float32)
