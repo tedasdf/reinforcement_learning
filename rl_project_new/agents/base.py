@@ -44,7 +44,7 @@ class BaseAgent(ABC):
 
         elif isinstance(self.action_space, gym.spaces.Box):
             # continuous vector
-            action = action_tensor.detach().cpu().numpy()
+            action = action_tensor.detach().cpu().numpy()[0]
             return np.clip(action, self.action_space.low, self.action_space.high)
 
         else:
