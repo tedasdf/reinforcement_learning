@@ -73,8 +73,8 @@ def parse_args():
 if __name__ == "__main__":
 
     args, extra_args = parse_args()
-    raise ValueError
-    cfg = OmegaConf.load("rl_project_new/configs/DDPG/base.yaml")
+    
+    cfg = OmegaConf.load(args.config_file)
     
     ## device
     if cfg.training.device == "cuda" and torch.cuda.is_available():
