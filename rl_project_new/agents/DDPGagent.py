@@ -45,7 +45,8 @@ class DDPGnetRLAgent(BaseAgent):
 
 
     def compute_n_step_loss(self, state_tensor):
-        
+        if not self.replay_buffer.check_length():
+            return None
         target_q_values, states_tensor, actions_tensor = self.process_memory()
 
         current_q_values = self.network.critic(states_tensor, actions_tensor)

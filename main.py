@@ -173,7 +173,8 @@ if __name__ == "__main__":
 
             # Compute loss from n-step rollout
             loss = agent.compute_n_step_loss(state_tensor)
-
+            if loss is None:
+                continue
             
 
             # Loop over optimizers if multiple, otherwise use default
