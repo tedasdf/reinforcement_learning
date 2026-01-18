@@ -6,7 +6,7 @@ from rl_project_new.buffer.replay_buffer import ReplayBuffer
 
 
 class DDPGnetRLAgent(BaseAgent):
-    def __init__(self, replay_buffer: ReplayBuffer, network, gamma, critic_lr, actor_lr , device, action_space, target_network, tau):
+    def __init__(self, replay_buffer: ReplayBuffer, network, gamma, critic_lr, actor_lr , device, action_space, tau):
         super().__init__(device, network, action_space)
         self.replay_buffer = replay_buffer
         self.gamma = gamma
@@ -84,4 +84,4 @@ class DDPGnetRLAgent(BaseAgent):
         # Soft update
         self.soft_update()
 
-        return 
+        return grad_norms

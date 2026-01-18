@@ -22,6 +22,7 @@ agent:
   device: "cuda"
   actor_lr: 0.001
   critic_lr: 0.001
+  tau: 0.005
   # You can even nest the model inside!
   network:
     _target_: "rl_project_new.algorithms.DDPG.DeepDetNetwork"
