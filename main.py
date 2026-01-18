@@ -91,6 +91,7 @@ if __name__ == "__main__":
     #### agent prep
     agent = instantiate(
         cfg.agent,
+        action_space= env.action_space,
         network={
         "in_channels": state_dim,
         "action_dim": action_dim
@@ -126,16 +127,17 @@ if __name__ == "__main__":
                     state_tensor = state_tensor.unsqueeze(0)
 
                 ### agent preprocess
-                action, extra = agent.get_action(state_tensor)
-               
+                action_tensor, extra = agent.get_action(state_tensor)
+                action = agent.format_action(action_tensor)
+
                 if num_envs == 1:
-                    next_state, reward, term, trunc, info = env.step(action.item())
+                    next_state, reward, term, trunc, info = env.step(action)
                     reward = np.array([reward], dtype=np.float32)
                     term   = np.array([term], dtype=np.bool_)
                     trunc  = np.array([trunc], dtype=np.bool_)
                     next_state = np.expand_dims(next_state, 0)
                 else:
-                    next_state, reward, term, trunc, info = env.step(action.cpu().numpy())
+                    next_state, reward, term, trunc, info = env.step(action)
                     reward = reward.astype(np.float32)
                     term   = term.astype(np.bool_)
                     trunc  = trunc.astype(np.bool_)

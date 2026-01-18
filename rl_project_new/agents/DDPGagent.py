@@ -6,8 +6,8 @@ from rl_project_new.buffer.replay_buffer import ReplayBuffer
 
 
 class DDPGnetRLAgent(BaseAgent):
-    def __init__(self, replay_buffer: ReplayBuffer, network, gamma, critic_lr, actor_lr , device):
-        super().__init__(device, network)
+    def __init__(self, replay_buffer: ReplayBuffer, network, gamma, critic_lr, actor_lr , device, action_space):
+        super().__init__(device, network, action_space)
         self.replay_buffer = replay_buffer
         self.gamma = gamma
         self.actor_lr = actor_lr

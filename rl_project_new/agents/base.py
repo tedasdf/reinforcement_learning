@@ -1,12 +1,15 @@
 import os
 import torch
+import gymnasium as gym
+import numpy as np
 from abc import ABC, abstractmethod
 
 class BaseAgent(ABC):
-    def __init__(self, device, network):
+    def __init__(self, device, network, action_space):
         self.device = device
         self.network = network.to(device)   # <-- probably missing
         self.memory = []
+        self.action_space = action_space
 
     @abstractmethod
     def setup_network(self):
@@ -30,6 +33,22 @@ class BaseAgent(ABC):
     @abstractmethod
     def memory_clear(self):
         self.memory = [] 
+
+    def format_action(self, action_tensor):
+        """
+        Converts model output into an env-compatible action
+        """
+        if isinstance(self.action_space, gym.spaces.Discrete):
+            # scalar int
+            return action_tensor.item()
+
+        elif isinstance(self.action_space, gym.spaces.Box):
+            # continuous vector
+            action = action_tensor.detach().cpu().numpy()
+            return np.clip(action, self.action_space.low, self.action_space.high)
+
+        else:
+            raise NotImplementedError(f"Unsupported action space: {self.action_space}")
 
     def save_checkpoint(self, episode, reward, path="checkpoints/"):
         if not os.path.exists(path):

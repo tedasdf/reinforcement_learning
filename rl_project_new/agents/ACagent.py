@@ -2,8 +2,8 @@ import torch, os
 from rl_project_new.agents.base import BaseAgent
 
 class ACnetRLAgent(BaseAgent):
-    def __init__(self, network, gamma, lr, device):
-        super().__init__(device, network)
+    def __init__(self, network, gamma, lr, device, action_space):
+        super().__init__(device, network, action_space)
         self.gamma = gamma
         self.lambda_ = 0.95
         self.lr = lr

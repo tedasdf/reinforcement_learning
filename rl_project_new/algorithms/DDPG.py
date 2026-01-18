@@ -45,13 +45,12 @@ class DeepDetNetwork(nn.Module):
         
 
     def forward(self, state, use_noise=True):
-        features = self.backbone(state)
-        action = self.actor(features)
+        action = self.actor(state)
         
         if use_noise:
             action = action + self.theta * (self.mean - action) + self.sigma * torch.randn_like(action)
         
-        value = self.critic(features)
+        value = self.critic(state, action)
         return action, value
 
     
