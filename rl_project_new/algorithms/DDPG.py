@@ -61,7 +61,7 @@ class CriticNetwork_new(nn.Module):
         self.init_network(final_layer_bound)
 
 
-    def init_network(self):
+    def init_network(self, final_layer_bound):
         def init_layer(layer):
             if isinstance(layer, nn.Linear):
                 fan_in = layer.weight.size(1)
@@ -70,8 +70,8 @@ class CriticNetwork_new(nn.Module):
                 nn.init.uniform_(layer.bias, -bound, bound)
 
         self.apply(init_layer)
-        nn.init.uniform_(self.output_net[-1].weight, -0.003, 0.003)
-        nn.init.uniform_(self.output_net[-1].bias, -0.003, 0.003)
+        nn.init.uniform_(self.output_net[-1].weight, -final_layer_bound, final_layer_bound)
+        nn.init.uniform_(self.output_net[-1].bias, -final_layer_bound, final_layer_bound)
             
     def forward(self, state, action):
         state_value = self.state_net(state)
