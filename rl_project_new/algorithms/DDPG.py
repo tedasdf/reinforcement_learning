@@ -80,7 +80,7 @@ class CriticNetwork_new(nn.Module):
         state_action_value = self.output_net(torch.add(state_value, action_value))
         return state_action_value
 
-class OUActionNose():
+class OUActiOUActionNoiseonNose():
     def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
         self.theta = theta
         self.mu = mu
@@ -90,7 +90,7 @@ class OUActionNose():
         self.reset()
 
     def __call__(self):
-        x = self.x_prev + self.theta * (self.mu - self.x_pev) * self.dt + self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
+        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
     
     def reset(self):
         self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
@@ -128,7 +128,7 @@ class DeepDetNetwork(nn.Module):
         
         self.actor = ActorNetwork_new(state_dim, hidden_dim[0], hidden_dim[1], action_dim, actor_bound)
         self.critic = CriticNetwork_new(state_dim, hidden_dim[0], hidden_dim[1], action_dim, critic_bound)
-        self.noise = OUActionNose(mu=np.zeros(action_dim), sigma=sigma, theta=theta, dt=1e-2)
+        self.noise = OUActionNoise(mu=np.zeros(action_dim), sigma=sigma, theta=theta, dt=1e-2)
 
 
     def critic_forward(self, state, action):
