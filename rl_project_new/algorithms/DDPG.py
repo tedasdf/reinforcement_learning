@@ -147,6 +147,9 @@ class DeepDetNetwork(nn.Module):
 
     
     def loss(self, current_qs , target_qs ):
+        print(current_qs.shape)
+        print(target_qs.shape)
+        raise ValueError
         return F.mse_loss(current_qs, target_qs, reduction='mean')
     
 
