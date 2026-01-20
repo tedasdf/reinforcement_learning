@@ -30,8 +30,8 @@ class ActorNetwork_new(nn.Module):
                 nn.init.uniform_(layer.bias, -bound, bound)
 
         self.apply(init_layer)
-        nn.init.uniform_(self.action_net[-1].weight, -final_layer_bound, final_layer_bound)
-        nn.init.uniform_(self.action_net[-1].bias, -final_layer_bound, final_layer_bound)
+        nn.init.uniform_(self.action_net[-2].weight, -final_layer_bound, final_layer_bound)
+        nn.init.uniform_(self.action_net[-2].bias, -final_layer_bound, final_layer_bound)
             
 
     def forward(self, state):
