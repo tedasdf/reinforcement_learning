@@ -5,7 +5,7 @@ import numpy as np
 from rl_project_new.algorithms.utils import CNNBackbone, ActorNetwork
 
 
-class ActorNetowrk_new(nn.Module):
+class ActorNetwork_new(nn.Module):
     def __init__(self, input_dim, hidden_dim_1, hidden_dim_2, n_actions, final_layer_bound):
         self.action_net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim_1),
@@ -121,14 +121,13 @@ class CriticNetwork(nn.Module):
     
 
 class DeepDetNetwork(nn.Module):
-    def __init__(self, state_dim, hidden_dim, action_dim, sigma):
+    def __init__(self, state_dim, hidden_dim, action_dim, sigma, theta, actor_bound, critic_bound):
         super().__init__()
-        print(hidden_dim)
         # self.backbone = CNNBackbone(in_channels=in_channels)
         
-        self.actor = ActorNetowrk_new(state_dim, hidden_dim[0], hidden_dim[1], action_dim, sigma)
-        self.critic = CriticNetwork_new(state_dim, hidden_dim[0], hidden_dim[1], action_dim, sigma)
-        self.noise = OUActionNose(mu=np.zeros(action_dim))
+        self.actor = ActorNetwork_new(state_dim, hidden_dim[0], hidden_dim[1], action_dim, actor_bound)
+        self.critic = CriticNetwork_new(state_dim, hidden_dim[0], hidden_dim[1], action_dim, critic_bound)
+        self.noise = OUActionNose(mu=np.zeros(action_dim), sigma=sigma, theta=theta, dt=1e-2)
 
 
     def critic_forward(self, state, action):
