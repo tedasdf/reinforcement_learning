@@ -299,14 +299,15 @@ if __name__ == "__main__":
             new_state, reward, terminated, truncated, info = env.step(act)
             done = terminated or truncated
             agent.remember(obs, act, reward, new_state, int(done))
-            critic_loss, actor_loss = agent.learn()
+            losses = agent.learn()
             score += reward
             obs = new_state
           
-            if critic_loss is not None:
+            if losses is not None:
+                critic_loss, actor_loss = losses
                 critic_losses.append(critic_loss.item())
                 actor_losses.append(actor_loss.item())
-                
+
         score_history.append(score)
         if len(critic_losses) > 0:
             avg_critic = np.mean(critic_losses[-100:])
