@@ -29,6 +29,8 @@ agent:
     hidden_dim: [400, 300]
     sigma: 0.2
     theta: 0.15
+    actor_bound: 0.003
+    critic_bound: 0.003
   replay_buffer:
     _target_: "rl_project_new.buffer.replay_buffer.ReplayBuffer"
     capacity: 100000

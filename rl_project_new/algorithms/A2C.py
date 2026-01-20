@@ -21,13 +21,13 @@ from rl_project_new.algorithms.utils import CNNBackbone, ActorNetwork, CriticNet
 """
 
 class AdvantgeActorCriticNetwork(nn.Module):
-    def __init__(self, in_channels, hidden_dim, action_dim, actor_num):
+    def __init__(self, state_dim, hidden_dim, action_dim, actor_num):
         super().__init__()
 
         self.actor_num = actor_num
 
 
-        self.backbone = CNNBackbone(in_channels=in_channels)  # frame stack = 4
+        self.backbone = CNNBackbone(in_channels=state_dim)  # frame stack = 4
         
         self.actors = nn.ModuleList([
             ActorNetwork(self.backbone.output_dim, hidden_dim, action_dim) 
