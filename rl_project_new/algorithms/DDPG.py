@@ -7,6 +7,7 @@ from rl_project_new.algorithms.utils import CNNBackbone, ActorNetwork
 
 class ActorNetwork_new(nn.Module):
     def __init__(self, input_dim, hidden_dim_1, hidden_dim_2, n_actions, final_layer_bound):
+        super().__init__()
         self.action_net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim_1),
             nn.LayerNorm(hidden_dim_1),
