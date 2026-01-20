@@ -273,8 +273,11 @@ if __name__ == "__main__":
     import gymnasium as gym
     import numpy as np
     import matplotlib.pyplot as plt
-
-
+    fc1 = nn.Linear(8, 400)
+    print(np.sqrt(fc1.weight.data.size()[0]))
+    f1 = 1./np.sqrt(fc1.weight.data.size()[0])
+    print(f1)
+    raise ValueError
     env = gym.make(
         "LunarLanderContinuous-v3",
         continuous = True,

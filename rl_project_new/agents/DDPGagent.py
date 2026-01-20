@@ -2,11 +2,12 @@ import torch
 import copy
 from rl_project_new.agents.base import BaseAgent
 from rl_project_new.agents.utils import replay_to_tensor
+from rl_project_new.algorithms.DDPG import DeepDetNetwork
 from rl_project_new.buffer.replay_buffer import ReplayBuffer
 
 
 class DDPGnetRLAgent(BaseAgent):
-    def __init__(self, replay_buffer: ReplayBuffer, network, gamma, critic_lr, actor_lr , device, action_space, tau):
+    def __init__(self, replay_buffer: ReplayBuffer, network: DeepDetNetwork, gamma, critic_lr, actor_lr , device, action_space, tau):
         super().__init__(device, network, action_space)
         self.replay_buffer = replay_buffer
         self.gamma = gamma
@@ -16,23 +17,27 @@ class DDPGnetRLAgent(BaseAgent):
         self.tau = tau
     
     def soft_update(self):
-        for p, p_targ in zip(self.network.parameters(), self.target_network.parameters()):
-            p_targ.data.mul_(1 - self.tau)
-            p_targ.data.add_(self.tau * p.data)
+        with torch.no_grad():
+            for p, p_targ in zip(self.network.parameters(), self.target_network.parameters()):
+                p_targ.mul_(1 - self.tau)
+                p_targ.add_(self.tau * p)
+
 
     def setup_network(self):
 
         return {
-            'actor':    torch.optim.Adam(self.network.parameters(), lr=self.actor_lr),
-            'critic':   torch.optim.Adam(self.network.parameters(), lr=self.critic_lr),
+            'actor': torch.optim.Adam(self.network.actor.parameters(), lr=self.actor_lr),
+            'critic': torch.optim.Adam(self.network.critic.parameters(), lr=self.critic_lr),
         }
-    
-    def get_action(self, state_tensor):
-        action, value = self.network(state_tensor)
-        return action, {'value': value.squeeze(-1)}
 
     
-    def store_transition(self, state, action, reward, next_state, done, extra=None):
+    def get_action(self, state_tensor):
+    
+        action, _ = self.network.actor(state_tensor)
+        return action, {}
+
+    
+    def store_transition(self, state,  action, reward, next_state, done, extra=None):
         self.replay_buffer.store(state, action, reward, next_state, done)
 
 
@@ -56,10 +61,9 @@ class DDPGnetRLAgent(BaseAgent):
         target_q_values, states_tensor, actions_tensor = self.process_memory()
 
         current_q_values = self.network.critic(states_tensor, actions_tensor)
-
         critic_loss = self.network.loss(current_q_values, target_q_values)
 
-        value_tensors, _ = self.network(states_tensor, use_noise=False)
+        value_tensors = self.network.critic_forward(states_tensor, actions_tensor)
         actor_loss = -value_tensors.mean()
 
         return {
@@ -82,6 +86,7 @@ class DDPGnetRLAgent(BaseAgent):
         optimizers["actor"].step()
 
         # Soft update
+
         self.soft_update()
 
         return grad_norms
