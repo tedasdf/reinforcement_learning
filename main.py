@@ -143,7 +143,12 @@ if __name__ == "__main__":
 
                 done = np.logical_or(term, trunc)   # shape: [num_envs]
 
-                    
+                print(state.shape)
+                
+                print(action.shape)
+                print(reward.shape)
+                print(next_state.shape)
+                print(done.shape)
                 # Agent stores this transition in its local memory
                 agent.store_transition(state, action, reward, next_state, done, extra)
 
