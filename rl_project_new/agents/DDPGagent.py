@@ -33,7 +33,7 @@ class DDPGnetRLAgent(BaseAgent):
     
     def get_action(self, state_tensor):
     
-        action, _ = self.network.actor(state_tensor)
+        action = self.network.actor(state_tensor)
         return action, {}
 
     
