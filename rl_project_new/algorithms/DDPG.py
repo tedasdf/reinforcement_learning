@@ -80,7 +80,7 @@ class CriticNetwork_new(nn.Module):
         state_action_value = self.output_net(torch.add(state_value, action_value))
         return state_action_value
 
-class OUActiOUActionNoiseonNose():
+class OUActionNoise():
     def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
         self.theta = theta
         self.mu = mu
