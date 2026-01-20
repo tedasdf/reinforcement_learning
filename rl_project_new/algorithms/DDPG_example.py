@@ -275,7 +275,7 @@ if __name__ == "__main__":
 
 
     env = gym.make(
-        "LunarLander-v2",
+        "LunarLanderContinuous-v3",
         continuous = True,
         gravity = -10.0,
         render_mode = None
