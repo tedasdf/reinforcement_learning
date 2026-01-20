@@ -228,6 +228,7 @@ class Agent(object):
         self.actor.optimizer.step()
 
         self.update_network_parameters()
+        return critic_loss, actor_loss
 
     def update_network_parameters(self, tau=None):
         if tau is None:
@@ -290,17 +291,36 @@ if __name__ == "__main__":
         done = False
         score = 0
         obs, _ = env.reset()
+        critic_losses = []
+        actor_losses = []
+
         while not done:
             act = agent.choose_action(obs)
             new_state, reward, terminated, truncated, info = env.step(act)
             done = terminated or truncated
             agent.remember(obs, act, reward, new_state, int(done))
-            agent.learn()
+            critic_loss, actor_loss = agent.learn()
             score += reward
             obs = new_state
-
+          
+            if critic_loss is not None:
+                critic_losses.append(critic_loss.item())
+                actor_losses.append(actor_loss.item())
+                
         score_history.append(score)
-        print("episode", i, "score %.2f" % score, "100 game average %.2f" % np.mean(score_history[-100:]))
+        if len(critic_losses) > 0:
+            avg_critic = np.mean(critic_losses[-100:])
+            avg_actor = np.mean(actor_losses[-100:])
+        else:
+            avg_critic, avg_actor = 0.0, 0.0
+
+        print(
+            f"episode {i} | "
+            f"score {score:.2f} | "
+            f"100 avg {np.mean(score_history[-100:]):.2f} | "
+            f"critic loss {avg_critic:.4f} | "
+            f"actor loss {avg_actor:.4f}"
+        )
         if i % 25 == 0:
             agent.save_models()
 
@@ -308,4 +328,14 @@ if __name__ == "__main__":
     plt.title('Score History')
     plt.xlabel('Episode')
     plt.ylabel('Score')
+    
+    plt.figure()
+    plt.plot(critic_losses, label="Critic Loss")
+    plt.plot(actor_losses, label="Actor Loss")
+    plt.legend()
+    plt.xlabel("Training Step")
+    plt.ylabel("Loss")
+    plt.title("DDPG Losses")
+    plt.show()
+
     plt.show()
