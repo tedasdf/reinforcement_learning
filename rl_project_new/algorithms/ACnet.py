@@ -3,10 +3,10 @@ from rl_project_new.algorithms.utils import CNNBackbone, ActorNetwork, CriticNet
 
 
 class ActorCriticNetwork(nn.Module):
-    def __init__(self, in_channels, hidden_dim, action_dim):
+    def __init__(self, state_dim, hidden_dim, action_dim):
         super().__init__()
 
-        self.backbone = CNNBackbone(in_channels=in_channels)  # frame stack = 4
+        self.backbone = CNNBackbone(in_channels=state_dim)  # frame stack = 4
     
         self.actor = ActorNetwork(self.backbone.output_dim , hidden_dim , action_dim)
         self.critic = CriticNetwork(self.backbone.output_dim , hidden_dim)

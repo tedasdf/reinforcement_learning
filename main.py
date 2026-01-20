@@ -81,8 +81,7 @@ if __name__ == "__main__":
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    print(f"Using device: {device}")
-
+  
     env, action_dim, state_dim, num_envs = setup_training_env(cfg)
  
     print(f"Environment ID: {cfg.env.id} Action Dimension: {action_dim} State Dimension: {state_dim}")
@@ -93,7 +92,7 @@ if __name__ == "__main__":
         cfg.agent,
         action_space= env.action_space,
         network={
-        "in_channels": state_dim,
+        "state_dim": state_dim,
         "action_dim": action_dim
         }
     )
