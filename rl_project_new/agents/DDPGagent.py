@@ -15,6 +15,8 @@ class DDPGnetRLAgent(BaseAgent):
         self.critic_lr = critic_lr
         self.target_network = copy.deepcopy(self.network)
         self.tau = tau
+        self.network = self.network.to(device)
+        self.target_network = self.target_network.to(device)
     
     def soft_update(self):
         with torch.no_grad():
