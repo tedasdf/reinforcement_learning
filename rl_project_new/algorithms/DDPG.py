@@ -140,7 +140,7 @@ class DeepDetNetwork(nn.Module):
         action = self.actor(state)
     
         if use_noise:
-            action = action + torch.tensor(self.noise(), dtype=torch.float)
+            action = action + torch.tensor(self.noise(), dtype=action.dtype, device=action.device)
     
         value = self.critic(state, action)
         return action, value
