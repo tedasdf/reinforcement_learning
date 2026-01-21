@@ -48,8 +48,7 @@ class DDPGnetRLAgent(BaseAgent):
         with torch.no_grad():
             _, next_q_values_target = self.target_network(next_states_tensor)
             target_q_values = rewards_tensor + self.gamma * (1 - dones_tensor) * next_q_values_target
-        print(actions_tensor.shape)
-        print(states_tensor.shape)
+
 
         return target_q_values.squeeze(-1), states_tensor.squeeze(1), actions_tensor
 
@@ -61,8 +60,7 @@ class DDPGnetRLAgent(BaseAgent):
         if not self.replay_buffer.check_length():
             return None
         target_q_values, states_tensor, actions_tensor = self.process_memory()
-        print(state_tensor.shape)
-        print(actions_tensor.shape)
+
 
         critic_value_ = self.network.critic_forward(states_tensor, actions_tensor)
         
@@ -78,6 +76,8 @@ class DDPGnetRLAgent(BaseAgent):
         }
     
     def update_networks(self, loss, optimizers):
+        print(loss)
+        raise ValueError
         grad_norms = {}
         # Critic update
         optimizers["critic"].zero_grad()
