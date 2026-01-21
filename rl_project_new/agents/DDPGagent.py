@@ -77,7 +77,6 @@ class DDPGnetRLAgent(BaseAgent):
     
     def update_networks(self, loss, optimizers):
         print(loss)
-        raise ValueError
         grad_norms = {}
         # Critic update
         optimizers["critic"].zero_grad()
