@@ -1,12 +1,13 @@
 import torch
 
 def replay_to_tensor(states, actions, rewards, next_states, dones, device=None):
-    states_tensor = torch.FloatTensor(states)
-    actions_tensor = torch.FloatTensor(actions)
-    rewards_tensor = torch.FloatTensor(rewards).unsqueeze(1)
-    next_states_tensor = torch.FloatTensor(next_states)
-    dones_tensor = torch.FloatTensor(dones).unsqueeze(1)
-    
+    rewards_tensor = torch.tensor(rewards, dtype=torch.float)
+    dones_tensor = torch.tensor(dones)
+    next_states_tensor = torch.tensor(next_states, dtype=torch.float)
+    actions_tensor = torch.tensor(actions, dtype=torch.float)
+    state = torch.tensor(state, dtype=torch.float)
+
+
     if device:
         states_tensor = states_tensor.to(device)
         actions_tensor = actions_tensor.to(device)
