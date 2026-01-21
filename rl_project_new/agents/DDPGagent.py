@@ -61,7 +61,9 @@ class DDPGnetRLAgent(BaseAgent):
         if not self.replay_buffer.check_length():
             return None
         target_q_values, states_tensor, actions_tensor = self.process_memory()
-
+        print(target_q_values.shape)
+        print(actions_tensor.shape)
+        raise ValueError
         critic_value_ = self.network.critic_forward(states_tensor, actions_tensor)
         
         critic_loss = self.network.loss(target_q_values, critic_value_)

@@ -204,6 +204,7 @@ class Agent(object):
 
         target_actions = self.target_actor.forward(new_state)
         critic_value_ = self.target_critic.forward(new_state, target_actions)
+        
         critic_value = self.critic.forward(state, action)
 
         target = []
@@ -213,6 +214,7 @@ class Agent(object):
         print(target.shape)
         target = target.view(self.batch_size, 1)   
         print(target.shape)
+        print(critic_value.shape)
         self.critic.train()
         self.critic.optimizer.zero_grad()
         critic_loss = F.mse_loss(target, critic_value)
