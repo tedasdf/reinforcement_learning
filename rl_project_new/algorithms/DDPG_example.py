@@ -188,7 +188,7 @@ class Agent(object):
     def remember(self, state, action, reward, new_state, done):
         self.memory.store_transition(state, action, reward, new_state, done)
 
-    def learn(self):
+    def learn(self):    
         if self.memory.mem_cntr < self.batch_size:
             return
         state, action, reward, new_state, done = self.memory.sample_buffer(self.batch_size)
@@ -204,9 +204,7 @@ class Agent(object):
 
         target_actions = self.target_actor.forward(new_state)
         critic_value_ = self.target_critic.forward(new_state, target_actions)
-        print(action.shape)
-        print(state.shape)
-        raise ValueError
+        
         critic_value = self.critic.forward(state, action)
 
         target = []
@@ -215,13 +213,13 @@ class Agent(object):
         target = T.tensor(target).to(self.critic.device)
         print(target.shape)
         target = target.view(self.batch_size, 1)   
-        print(target.shape)
-        print(critic_value.shape)
-        raise ValueError
+        
         self.critic.train()
         self.critic.optimizer.zero_grad()
         critic_loss = F.mse_loss(target, critic_value)
+        print(critic_loss)
         critic_loss.backward()
+        
         self.critic.optimizer.step()
         self.critic.eval()
     
@@ -230,6 +228,7 @@ class Agent(object):
         self.actor.train()
         actor_loss = -self.critic.forward(state, mu)
         actor_loss = T.mean(actor_loss)
+        print(actor_loss.shape)
         actor_loss.backward()
         self.actor.optimizer.step()
 
