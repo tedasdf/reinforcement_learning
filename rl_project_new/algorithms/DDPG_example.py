@@ -235,7 +235,8 @@ class Agent(object):
         self.update_network_parameters()
 
         print(critic_loss.shape)
-        raise ValueError
+        if critic_loss is None:
+            raise ValueError
         return critic_loss, actor_loss
 
     def update_network_parameters(self, tau=None):
