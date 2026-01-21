@@ -51,7 +51,7 @@ class DDPGnetRLAgent(BaseAgent):
         print(actions_tensor.shape)
         print(states_tensor.shape)
 
-        return target_q_values.squeeze(-1), states_tensor, actions_tensor.squeeze(-1)
+        return target_q_values.squeeze(-1), states_tensor.squeeze(-1), actions_tensor
 
     def memory_clear(self):
         pass  # replay buffer persists; no action needed
