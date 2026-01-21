@@ -109,7 +109,7 @@ if __name__ == "__main__":
         run_name="A2C-NStep-Run", 
         config=OmegaConf.to_container(cfg)
     )
-    
+    torch.autograd.set_detect_anomaly(True)
     for episode in range(max_episodes):
         state, _ = env.reset()
         if num_envs == 1:
@@ -142,7 +142,7 @@ if __name__ == "__main__":
                     trunc  = trunc.astype(np.bool_)
 
                 done = np.logical_or(term, trunc)   # shape: [num_envs]
-                
+
                 # Agent stores this transition in its local memory
                 agent.store_transition(state, action, reward, next_state, done, extra)
 
