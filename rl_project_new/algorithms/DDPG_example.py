@@ -215,6 +215,7 @@ class Agent(object):
         target = target.view(self.batch_size, 1)   
         print(target.shape)
         print(critic_value.shape)
+        raise ValueError
         self.critic.train()
         self.critic.optimizer.zero_grad()
         critic_loss = F.mse_loss(target, critic_value)
