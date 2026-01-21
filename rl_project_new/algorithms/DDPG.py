@@ -97,31 +97,6 @@ class OUActionNoise():
         self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
 
 
-class CriticNetwork(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_dim_1, hidden_dim_2):
-        super().__init__()
-
-        self.state_network = nn.Sequential(
-            nn.Linear(state_dim, hidden_dim_1),
-            nn.ReLU(),
-            nn.Linear(hidden_dim_1, hidden_dim_2)
-        )
-
-        self.action_network = nn.Linear(action_dim, hidden_dim_2)
-
-        self.final_network = nn.Sequential(
-            nn.ReLU(),
-            nn.Linear(hidden_dim_2, 1)
-        )
-
-        nn.init.uniform_(self.final_network[1].weight, -3e-3, 3e-3)
-        nn.init.uniform_(self.final_network[1].bias,   -3e-4, 3e-4)
-
-    def forward(self, state, action):
-        h = self.state_network(state) + self.action_network(action)
-        return self.final_network(h)
-    
-
 class DeepDetNetwork(nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim, sigma, theta, actor_bound, critic_bound):
         super().__init__()

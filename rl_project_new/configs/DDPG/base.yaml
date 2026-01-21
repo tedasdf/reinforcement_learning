@@ -11,7 +11,7 @@ env:
 training:
   num_envs: 1
   n_steps: 5
-  max_episodes: 500
+  max_episodes: 10000
   print_every: 10
   device: "cuda" # PyTorch uses 'cuda' for GPU
 
@@ -20,9 +20,9 @@ agent:
   _target_: "rl_project_new.agents.DDPGagent.DDPGnetRLAgent"
   gamma: 0.99
   device: "cuda"
-  actor_lr: 0.001
-  critic_lr: 0.001
-  tau: 0.005
+  actor_lr: 0.000025
+  critic_lr: 0.00025
+  tau: 0.001
   # You can even nest the model inside!
   network:
     _target_: "rl_project_new.algorithms.DDPG.DeepDetNetwork"
@@ -34,4 +34,4 @@ agent:
   replay_buffer:
     _target_: "rl_project_new.buffer.replay_buffer.ReplayBuffer"
     capacity: 100000
-    batch_size: 64
+    batch_size: 128
