@@ -76,22 +76,27 @@ class DDPGnetRLAgent(BaseAgent):
         }
     
     def update_networks(self, loss, optimizers):
-        print(loss)
         grad_norms = {}
-        # Critic update
+        
+        # 1. Zero all gradients
         optimizers["critic"].zero_grad()
-        loss["critic_loss"].backward()
-        grad_norms["critic_grad_norm"] = torch.nn.utils.clip_grad_norm_(self.network.critic.parameters(), 0.5)
-        optimizers["critic"].step()
-
-        # Actor update
         optimizers["actor"].zero_grad()
+
+        # 2. Backward passes
+        # We use retain_graph=True if both losses were calculated 
+        # from the same forward pass through the networks.
+        loss["critic_loss"].backward(retain_graph=True)
         loss["actor_loss"].backward()
+
+        # 3. Clip gradients (Optional but good practice)
+        grad_norms["critic_grad_norm"] = torch.nn.utils.clip_grad_norm_(self.network.critic.parameters(), 0.5)
         grad_norms["actor_grad_norm"] = torch.nn.utils.clip_grad_norm_(self.network.actor.parameters(), 0.5)
+
+        # 4. Step both optimizers ONLY after all backwards are done
+        optimizers["critic"].step()
         optimizers["actor"].step()
 
-        # Soft update
-
+        # 5. Soft update
         self.soft_update()
 
         return grad_norms
