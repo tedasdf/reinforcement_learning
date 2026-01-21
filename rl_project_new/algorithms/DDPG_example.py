@@ -217,7 +217,6 @@ class Agent(object):
         self.critic.train()
         self.critic.optimizer.zero_grad()
         critic_loss = F.mse_loss(target, critic_value)
-        print(critic_loss)
         critic_loss.backward()
         
         self.critic.optimizer.step()
@@ -228,13 +227,13 @@ class Agent(object):
         self.actor.train()
         actor_loss = -self.critic.forward(state, mu)
         actor_loss = T.mean(actor_loss)
-        print(actor_loss.shape)
+        print(actor_loss)
         actor_loss.backward()
         self.actor.optimizer.step()
 
         self.update_network_parameters()
 
-        print(critic_loss.shape)
+        print(critic_loss)
         if critic_loss is not None:
             raise ValueError
         return critic_loss, actor_loss
