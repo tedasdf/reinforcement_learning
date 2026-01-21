@@ -49,8 +49,7 @@ class DDPGnetRLAgent(BaseAgent):
             _, next_q_values_target = self.target_network(next_states_tensor)
             target_q_values = rewards_tensor + self.gamma * (1 - dones_tensor) * next_q_values_target
         print(target_q_values.shape)
-        print(states_tensor.shape)
-        print(actions_tensor.shape)
+        raise ValueError
         return target_q_values, states_tensor, actions_tensor
 
     def memory_clear(self):
