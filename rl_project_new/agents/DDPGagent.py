@@ -48,9 +48,8 @@ class DDPGnetRLAgent(BaseAgent):
         with torch.no_grad():
             _, next_q_values_target = self.target_network(next_states_tensor)
             target_q_values = rewards_tensor + self.gamma * (1 - dones_tensor) * next_q_values_target
-        print(target_q_values.shape)
-        raise ValueError
-        return target_q_values, states_tensor, actions_tensor
+
+        return target_q_values.squeeze(-1), states_tensor, actions_tensor
 
     def memory_clear(self):
         pass  # replay buffer persists; no action needed
