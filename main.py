@@ -172,9 +172,11 @@ if __name__ == "__main__":
             loss = agent.compute_n_step_loss(state_tensor)
             if loss is None:
                 continue
-            
-            grad_norms = agent.update_networks(loss, optimizers)
-
+            try:
+                grad_norms = agent.update_networks(loss, optimizers)
+            except RuntimeError as e:
+                print(e)
+                raise ValueError
             logger.log_step(
                 reward=reward,
                 loss=loss,
