@@ -210,8 +210,9 @@ class Agent(object):
         for j in range(self.batch_size):
             target.append(reward[j] + self.gamma*critic_value_[j]*done[j])
         target = T.tensor(target).to(self.critic.device)
+        print(target.shape)
         target = target.view(self.batch_size, 1)   
-    
+        print(target.shape)
         self.critic.train()
         self.critic.optimizer.zero_grad()
         critic_loss = F.mse_loss(target, critic_value)
@@ -228,6 +229,8 @@ class Agent(object):
         self.actor.optimizer.step()
 
         self.update_network_parameters()
+
+        print(critic_loss.shape)
         return critic_loss, actor_loss
 
     def update_network_parameters(self, tau=None):
@@ -273,11 +276,7 @@ if __name__ == "__main__":
     import gymnasium as gym
     import numpy as np
     import matplotlib.pyplot as plt
-    fc1 = nn.Linear(8, 400)
-    print(np.sqrt(fc1.weight.data.size()[0]))
-    f1 = 1./np.sqrt(fc1.weight.data.size()[0])
-    print(f1)
-    raise ValueError
+  
     env = gym.make(
         "LunarLanderContinuous-v3",
         continuous = True,
