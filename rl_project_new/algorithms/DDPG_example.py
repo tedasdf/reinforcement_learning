@@ -309,7 +309,7 @@ if __name__ == "__main__":
                 critic_loss, actor_loss = losses
                 critic_losses.append(critic_loss.item())
                 actor_losses.append(actor_loss.item())
-
+                raise ValueError
         score_history.append(score)
         if len(critic_losses) > 0:
             avg_critic = np.mean(critic_losses[-100:])
