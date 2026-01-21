@@ -67,8 +67,8 @@ class DDPGnetRLAgent(BaseAgent):
         critic_loss = self.network.loss(target_q_values, critic_value_)
 
         mu = self.network.actor(state_tensor)
-        value_tensors = self.network.critic_forward(states_tensor, mu)
-        actor_loss = -value_tensors.mean()
+        value_tensors = -self.network.critic_forward(states_tensor, mu)
+        actor_loss = torch.mean(value_tensors)
 
         return {
             'critic_loss': critic_loss,
