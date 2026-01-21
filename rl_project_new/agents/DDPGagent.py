@@ -50,7 +50,7 @@ class DDPGnetRLAgent(BaseAgent):
             target_q_values = rewards_tensor + self.gamma * (1 - dones_tensor) * next_q_values_target
         print(actions_tensor.shape)
         print(states_tensor.shape)
-        raise ValueError
+
         return target_q_values.squeeze(-1), states_tensor, actions_tensor
 
     def memory_clear(self):
@@ -62,10 +62,12 @@ class DDPGnetRLAgent(BaseAgent):
             return None
         target_q_values, states_tensor, actions_tensor = self.process_memory()
 
-        current_q_values = self.network.critic(states_tensor, actions_tensor)
-        critic_loss = self.network.loss(current_q_values, target_q_values)
+        critic_value_ = self.network.critic_forward(states_tensor, actions_tensor)
+        
+        critic_loss = self.network.loss(target_q_values, critic_value_)
 
-        value_tensors = self.network.critic_forward(states_tensor, actions_tensor)
+        mu = self.network.actor(state_tensor)
+        value_tensors = self.network.critic_forward(states_tensor, mu)
         actor_loss = -value_tensors.mean()
 
         return {
