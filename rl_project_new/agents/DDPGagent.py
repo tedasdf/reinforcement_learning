@@ -63,7 +63,7 @@ class DDPGnetRLAgent(BaseAgent):
         target_q_values, states_tensor, actions_tensor = self.process_memory()
         print(state_tensor.shape)
         print(actions_tensor.shape)
-        raise ValueError
+
         critic_value_ = self.network.critic_forward(states_tensor, actions_tensor)
         
         critic_loss = self.network.loss(target_q_values, critic_value_)
