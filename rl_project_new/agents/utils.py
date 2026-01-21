@@ -5,7 +5,7 @@ def replay_to_tensor(states, actions, rewards, next_states, dones, device=None):
     dones_tensor = torch.tensor(dones)
     next_states_tensor = torch.tensor(next_states, dtype=torch.float)
     actions_tensor = torch.tensor(actions, dtype=torch.float)
-    state = torch.tensor(state, dtype=torch.float)
+    states_tensor = torch.tensor(states, dtype=torch.float)
 
 
     if device:
