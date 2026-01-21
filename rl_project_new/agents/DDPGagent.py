@@ -50,7 +50,7 @@ class DDPGnetRLAgent(BaseAgent):
             target_q_values = rewards_tensor + self.gamma * (1 - dones_tensor) * next_q_values_target
         print(actions_tensor.shape)
         print(states_tensor.shape)
-
+        
         return target_q_values.squeeze(-1), states_tensor, actions_tensor
 
     def memory_clear(self):

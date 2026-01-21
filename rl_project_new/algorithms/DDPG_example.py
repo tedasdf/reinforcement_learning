@@ -204,7 +204,8 @@ class Agent(object):
 
         target_actions = self.target_actor.forward(new_state)
         critic_value_ = self.target_critic.forward(new_state, target_actions)
-        
+        print(action.shape)
+        raise ValueError
         critic_value = self.critic.forward(state, action)
 
         target = []
