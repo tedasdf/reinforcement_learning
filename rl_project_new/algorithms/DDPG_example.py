@@ -363,8 +363,7 @@ if __name__ == "__main__":
 
         if i % 25 == 0:
             agent.save_models()
-        wandb.finish()
-
+    
 
     plt.plot(score_history)
     plt.title('Score History')
@@ -381,3 +380,4 @@ if __name__ == "__main__":
     plt.show()
 
     plt.show()
+    wandb.finish()
