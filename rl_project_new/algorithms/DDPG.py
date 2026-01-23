@@ -2,7 +2,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from rl_project_new.algorithms.utils import CNNBackbone, ActorNetwork
+import torch.optim as optim
+
+class OUActionNoise():
+    def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
+        self.theta = theta
+        self.mu = mu
+        self.sigma = sigma
+        self.dt = dt 
+        self.x0 = x0
+        self.reset()
+
+    def __call__(self):
+        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
+        self.x_prev = x 
+        return x
+    
+    def reset(self):
+        self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
 
 
 class ActorNetwork_new(nn.Module):
@@ -59,7 +76,9 @@ class CriticNetwork_new(nn.Module):
         )
 
         self.init_network(final_layer_bound)
-
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
+        self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
+        self.to(self.device)
 
     def init_network(self, final_layer_bound):
         def init_layer(layer):
@@ -80,30 +99,15 @@ class CriticNetwork_new(nn.Module):
         state_action_value = self.output_net(torch.add(state_value, action_value))
         return state_action_value
 
-class OUActionNoise():
-    def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
-        self.theta = theta
-        self.mu = mu
-        self.sigma = sigma
-        self.dt = dt 
-        self.x0 = x0
-        self.reset()
-
-    def __call__(self):
-        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
-        self.x_prev = x 
-        return x
-    def reset(self):
-        self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
 
 
 class DeepDetNetwork(nn.Module):
-    def __init__(self, state_dim, hidden_dim, action_dim, sigma, theta, actor_bound, critic_bound):
+    def __init__(self, state_dim, hidden_dim, action_dim, sigma=0.15, theta=0.2):
         super().__init__()
         # self.backbone = CNNBackbone(in_channels=in_channels)
         
-        self.actor = ActorNetwork_new(state_dim, hidden_dim[0], hidden_dim[1], action_dim, actor_bound)
-        self.critic = CriticNetwork_new(state_dim, hidden_dim[0], hidden_dim[1], action_dim, critic_bound)
+        self.actor = ActorNetwork_new(state_dim, hidden_dim[0], hidden_dim[1], action_dim, 0.003)
+        self.critic = CriticNetwork_new(state_dim, hidden_dim[0], hidden_dim[1], action_dim, 0.003)
         self.noise = OUActionNoise(mu=np.zeros(action_dim), sigma=sigma, theta=theta, dt=1e-2)
 
 

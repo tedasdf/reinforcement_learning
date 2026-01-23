@@ -19,7 +19,7 @@ jobs:
           
           git fetch origin
           git reset --hard origin/main
-          git clean -fd -e .env -e .rl_venv
+          git clean -fd -e .env -e .rl_venv -e rl_project_new/algorithms/tmp
 
           source .rl_venv/bin/activate
           uv pip install -r requirements.txt

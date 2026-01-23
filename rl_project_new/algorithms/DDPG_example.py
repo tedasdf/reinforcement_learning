@@ -6,6 +6,8 @@ import torch.optim as optim
 import numpy as np
 import wandb
 
+from rl_project_new.algorithms.DDPG import DeepDetNetwork
+
 class OUActionNoise(object): # Ornstein-Uhlenbeck process -> Temporary correlated noise
     def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
         self.theta = theta
@@ -25,7 +27,7 @@ class OUActionNoise(object): # Ornstein-Uhlenbeck process -> Temporary correlate
 
 class ReplayBuffer(object):
     def __init__(self, max_size, input_shape, n_actions):
-        self.mem_size = max_size
+        self.mem_size = max_size # 1000000 #input shape 8  # n_actions 4
         self.mem_cntr = 0
         self.state_memory = np.zeros((self.mem_size, *input_shape))
         self.new_state_memory = np.zeros((self.mem_size, *input_shape))
@@ -168,9 +170,11 @@ class Agent(object):
         self.batch_size = batch_size
         self.memory = ReplayBuffer(max_size, input_dims, n_actions)
 
-        self.actor = ActorNetwork(alpha, input_dims, layer1_size, layer2_size, n_actions=n_actions, name="actor")
-        self.critic = CriticNetwork(beta, input_dims, layer1_size, layer2_size, n_actions=n_actions, name="critic")
+        # self.actor = ActorNetwork(alpha, input_dims, layer1_size, layer2_size, n_actions=n_actions, name="actor")
+        # self.critic = CriticNetwork(beta, input_dims, layer1_size, layer2_size, n_actions=n_actions, name="critic")
 
+        self.network = DeepDetNetwork(input_dims, [layer1_size, layer2_size], n_actions)
+        
         self.target_actor = ActorNetwork(alpha, input_dims, layer1_size, layer2_size, n_actions=n_actions, name="target_actor")
         self.target_critic = CriticNetwork(beta, input_dims, layer1_size, layer2_size, n_actions=n_actions, name="target_critic")
 
@@ -179,11 +183,11 @@ class Agent(object):
         self.update_network_parameters(tau=1)
 
     def choose_action(self, observation):
-        self.actor.eval()
+       
         observation = T.tensor(observation, dtype=T.float).to(self.actor.device)
-        mu = self.actor(observation).to(self.actor.device)
-        mu_prime = mu + T.tensor(self.noise(), dtype=T.float).to(self.actor.device)
-        self.actor.train()
+        mu_prime, _ = self.network(observation).to(self.actor.device)
+        # mu_prime = mu + T.tensor(self.noise(), dtype=T.float).to(self.actor.device)
+       
         return mu_prime.cpu().detach().numpy()
     
     def remember(self, state, action, reward, new_state, done):
@@ -206,7 +210,7 @@ class Agent(object):
         target_actions = self.target_actor.forward(new_state)
         critic_value_ = self.target_critic.forward(new_state, target_actions)
         
-        critic_value = self.critic.forward(state, action)
+        critic_value = self.network.critic_forward(state, action)
 
         target = []
         for j in range(self.batch_size):
