@@ -1,0 +1,17 @@
+name: Train Model
+
+on:
+  workflow_dispatch:   # Run manually
+
+jobs:
+  train:
+    runs-on: [self-hosted, x64, linux, docker]
+
+    steps:
+      - name: Run training
+        run: |
+          cd /home/fypits25/Documents/ted_backyard/reinforcement_learning
+          source .rl_venv/bin/activate
+          
+          chmod +x run.sh
+          ./run.sh
