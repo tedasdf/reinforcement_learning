@@ -212,7 +212,7 @@ class Agent(object):
         for j in range(self.batch_size):
             target.append(reward[j] + self.gamma*critic_value_[j]*done[j])
         target = T.tensor(target).to(self.critic.device)
-        print(target.shape)
+
         target = target.view(self.batch_size, 1)   
         
         self.critic.train()
@@ -228,15 +228,11 @@ class Agent(object):
         self.actor.train()
         actor_loss = -self.critic.forward(state, mu)
         actor_loss = T.mean(actor_loss)
-        print(actor_loss)
         actor_loss.backward()
         self.actor.optimizer.step()
 
         self.update_network_parameters()
-
-        print(critic_loss)
-        if critic_loss is not None:
-            raise ValueError
+    
         return critic_loss, actor_loss
 
     def update_network_parameters(self, tau=None):
