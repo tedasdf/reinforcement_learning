@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-import torch.optim as optim
 
 class OUActionNoise():
     def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
@@ -76,9 +75,7 @@ class CriticNetwork_new(nn.Module):
         )
 
         self.init_network(final_layer_bound)
-        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
-        self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
-        self.to(self.device)
+        
 
     def init_network(self, final_layer_bound):
         def init_layer(layer):
