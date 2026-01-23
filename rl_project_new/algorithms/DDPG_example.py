@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+import wandb
 
 class OUActionNoise(object): # Ornstein-Uhlenbeck process -> Temporary correlated noise
     def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
@@ -289,6 +290,24 @@ if __name__ == "__main__":
         render_mode = None
     )
 
+    wandb.init(
+        project="DDPG-LunarLander",
+        config={
+            "algo": "DDPG",
+            "env": "LunarLanderContinuous-v3",
+            "alpha": 0.000025,
+            "beta": 0.00025,
+            "tau": 0.001,
+            "gamma": 0.99,
+            "batch_size": 64,
+            "layer1": 400,
+            "layer2": 300,
+            "n_actions": 4,
+        }
+    )
+
+
+
     agent = Agent(alpha=0.000025, beta=0.00025, input_dims=[8], tau=0.001, env=env, batch_size=64, layer1_size=400, layer2_size=300, n_actions=4)
 
     np.random.seed(0)
@@ -314,7 +333,12 @@ if __name__ == "__main__":
                 critic_loss, actor_loss = losses
                 critic_losses.append(critic_loss.item())
                 actor_losses.append(actor_loss.item())
-                raise ValueError
+                
+                wandb.log({
+                    "critic_loss": critic_loss.item(),
+                    "actor_loss": actor_loss.item()
+                })
+
         score_history.append(score)
         if len(critic_losses) > 0:
             avg_critic = np.mean(critic_losses[-100:])
@@ -329,8 +353,22 @@ if __name__ == "__main__":
             f"critic loss {avg_critic:.4f} | "
             f"actor loss {avg_actor:.4f}"
         )
+
+        wandb.log({
+            "episode": i,
+            "score": score,
+            "score_100_avg": np.mean(score_history[-100:]),
+            "critic_loss_avg": avg_critic,
+            "actor_loss_avg": avg_actor,
+        })
+
+
+       
+
         if i % 25 == 0:
             agent.save_models()
+        wandb.finish()
+
 
     plt.plot(score_history)
     plt.title('Score History')

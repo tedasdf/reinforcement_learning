@@ -86,6 +86,9 @@ if __name__ == "__main__":
  
     print(f"Environment ID: {cfg.env.id} Action Dimension: {action_dim} State Dimension: {state_dim}")
 
+    print(state_dim)
+    print(action_dim)
+    raise ValueError
 
     #### agent prep
     agent = instantiate(
