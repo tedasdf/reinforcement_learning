@@ -1,0 +1,48 @@
+# configs/pacman_config.yaml
+
+# Environment settings
+env:
+  id: "ALE/MsPacman-v5"
+  render_mode: "rgb_array"
+  frame_stack: 3
+  screen_size: 84
+
+# Training Hyperparameters
+training:
+  num_envs: 4 ## should be the same as actor_num
+  gamma: 0.99
+  learning_rate: 0.0001
+  n_steps: 5
+  max_episodes: 500
+  print_every: 10
+  device: "cuda" # PyTorch uses 'cuda' for GPU
+
+
+agent:
+  _target_: "rl_project_new.agents.A2Cagent.A2CnetRLAgent"
+  gamma: 0.99
+  device: "cuda"
+  # You can even nest the model inside!
+  network:
+    _target_: "rl_project_new.algorithms.A2C.AdvantgeActorCriticNetwork"
+    hidden_dim: 256
+    actor_num: 4 
+
+network:
+  discount: 0.99
+  stepsize: 0.01
+  policy_iter: 500
+  sim_steps_per_iter: 50000
+  
+  # 
+
+  vine:
+    rollouts_per_state: 4
+    len_rollout: 50
+    Q_value_per_batch: 500
+    num_rollouts_sampling: 16
+    rollouts_for_sampling: 1000
+  
+  SP:
+    num_path: 50
+    path_len: 1000

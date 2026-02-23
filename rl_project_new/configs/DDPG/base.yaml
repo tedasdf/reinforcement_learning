@@ -34,4 +34,4 @@ agent:
   replay_buffer:
     _target_: "rl_project_new.buffer.replay_buffer.ReplayBuffer"
     capacity: 100000
-    batch_size: 128
+    batch_size: 64

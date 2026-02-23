@@ -39,3 +39,4 @@ class ReplayBuffer:
 
     def check_length(self):
         return len(self.buffer) > self.batch_size
+    
